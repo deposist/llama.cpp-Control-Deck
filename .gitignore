@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# IDE / editors
+.vscode/
+.idea/
+.kiro/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project: runtime state and user config
+config.json
+config.json.backup-*
+config.local.json
+runtime/
+logs/
+*.log
+
+# Large local model files
+*.gguf
+*.ggml
+models/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# OS
+Thumbs.db

@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llama-cpp-control-deck"
+version = "0.1.0"
+description = "Tkinter GUI and Ollama-compatible proxy for managing local llama.cpp servers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "llama.cpp Control Deck contributors" },
+]
+keywords = [
+    "llama.cpp",
+    "llama-server",
+    "ollama",
+    "openai-compatible",
+    "gguf",
+    "local-llm",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "psutil>=6.0.0,<7.0.0",
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.34.0,<1.0.0",
+    "httpx>=0.28.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.6.0",
+    "black>=24.0.0",
+]
+
+[project.scripts]
+llama-control-deck = "llama_cpp_gui:main"
+llama-control-deck-manager = "llama_server_manager:main"
+llama-control-deck-config = "config:main"
+
+[project.urls]
+Homepage = "https://github.com/deposist/llama.cpp-Control-Deck"
+Issues = "https://github.com/deposist/llama.cpp-Control-Deck/issues"
+Source = "https://github.com/deposist/llama.cpp-Control-Deck"
+
+[tool.setuptools]
+py-modules = [
+    "config",
+    "llama_cpp_gui",
+    "llama_server_manager",
+    "ollama_proxy",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "C416"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

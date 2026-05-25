@@ -1,0 +1,30 @@
+name: Question
+description: Ask for help with setup or usage
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Include OS, Python version, llama.cpp build, and what you already tried.
+      value: |
+        OS:
+        Python:
+        llama.cpp build:
+        What I tried:
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Optional command output or log lines, with secrets removed.
+      render: text

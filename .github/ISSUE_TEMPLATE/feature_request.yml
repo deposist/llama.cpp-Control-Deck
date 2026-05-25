@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement or new workflow
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem would this solve?
+      placeholder: I want to run a vision model and an embeddings model together, but...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should Control Deck do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing workaround or other design options.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - GUI
+        - Process manager
+        - Ollama proxy
+        - Runtime detection
+        - Documentation
+        - Tests / CI
+        - Other
+    validations:
+      required: true

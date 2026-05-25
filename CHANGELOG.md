@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.0.0] - 2026-05-25
+
 ### Added
 - Project renamed and documented publicly as `llama.cpp Control Deck`.
+- Full bilingual README with English documentation first and Russian
+  documentation below.
 - Connection pooling in Ollama proxy via FastAPI `lifespan` (single
   `httpx.AsyncClient` for the lifetime of the app).
 - Background `HealthCheckWorker` (threading + queue) so the GUI no longer
@@ -22,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LLAMA_CPP_MODELS_DIR` environment variables.
 - Runtime re-detection from the GUI and CLI, including Python, `llama-server`,
   working directory, and `LD_LIBRARY_PATH`.
+- Beginner setup flow through `./start_gui.sh --setup` and the GUI
+  **Beginner setup** button for creating `.venv` and installing dependencies.
 - GUI buttons for installing Python dependencies from `requirements.txt` and
   system Tkinter/Python packages through the detected package manager.
 - `config.example.json` template, `.gitignore`, `LICENSE`, `CONTRIBUTING.md`.
@@ -32,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.venv/bin/python`, then `python3` from `PATH`.
 - File browse dialogs default to `~` instead of a hardcoded path.
 - README rewritten with a clearer description of purpose and architecture.
+- `llama_server_manager.py` now creates `logs/` before configuring file logging,
+  so clean checkouts import and test correctly.
 
 ## [0.1.0] - initial
 

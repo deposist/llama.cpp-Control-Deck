@@ -526,6 +526,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "llama_server_binary": str(LLAMA_SERVER_BINARY),
     "llama_server_cwd": str(DEFAULT_CWD),
     "llama_server_library_path": str(DEFAULT_LIB_DIR),
+    "llama_cpp_release_backend": "auto",
     "active_profile": "chat",
     "profiles": {
         "chat": _profile(profile_type="chat", port=8081),

@@ -127,6 +127,36 @@ def test_proxy_options_mapping():
     assert mapped["max_tokens"] == 256
 
 
+def test_llama_cpp_release_asset_selection():
+    from llama_cpp_release import parse_release_tag_from_text, select_release_asset
+
+    release = {
+        "tag_name": "b9305",
+        "assets": [
+            {
+                "name": "llama-b9305-bin-ubuntu-x64.tar.gz",
+                "browser_download_url": "https://example.test/cpu.tar.gz",
+                "size": 10,
+            },
+            {
+                "name": "llama-b9305-bin-ubuntu-vulkan-x64.tar.gz",
+                "browser_download_url": "https://example.test/vulkan.tar.gz",
+                "size": 20,
+            },
+        ],
+    }
+
+    cpu = select_release_asset(release, backend="auto", os_name="ubuntu", arch="x64")
+    assert cpu.backend == "cpu"
+    assert cpu.name == "llama-b9305-bin-ubuntu-x64.tar.gz"
+
+    vulkan = select_release_asset(release, backend="vulkan", os_name="ubuntu", arch="x64")
+    assert vulkan.backend == "vulkan"
+    assert vulkan.name == "llama-b9305-bin-ubuntu-vulkan-x64.tar.gz"
+
+    assert parse_release_tag_from_text("version: b9305 (abcdef)") == "b9305"
+
+
 def test_config_example_json_is_valid():
     """config.example.json must be parseable and contain required keys."""
     from pathlib import Path

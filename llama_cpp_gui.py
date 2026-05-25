@@ -31,6 +31,7 @@ from config import (
     runtime_value_is_usable,
     save_config,
 )
+from llama_cpp_release import BACKEND_CHOICES, read_manifest
 from llama_server_manager import HealthCheckWorker, LlamaServerManager, format_uptime, tail_file
 
 logger = logging.getLogger("llama_cpp_gui")
@@ -41,8 +42,12 @@ TOOLTIPS: dict[str, str] = {
     "llama-server": "Бинарник llama.cpp server, который запускает модели.",
     "Working dir": "Рабочая папка запуска. Для вашей сборки это папка build-cuda/bin.",
     "LD library path": "Папка с библиотеками llama.cpp. Без нее llama-server не найдет .so файлы.",
+    "llama.cpp backend": "Какой prebuilt release скачать: cpu самый совместимый, vulkan/rocm/openvino/sycl требуют соответствующие драйверы.",
     "Beginner setup": "Создать локальное .venv, установить Python-зависимости и выбрать этот Python для прокси.",
     "Auto-detect runtime": "Найти Python, llama-server, рабочую папку и LD_LIBRARY_PATH автоматически.",
+    "Check server version": "Запустить llama-server --version для текущего бинарника.",
+    "Check updates": "Проверить последний release llama.cpp на GitHub и сравнить с managed install.",
+    "Download llama-server": "Скачать выбранный prebuilt llama-server release и прописать его в Runtime.",
     "Install Python libs": "Установить Python-пакеты из requirements.txt в выбранный Python.",
     "Install system libs": "Открыть терминал и установить системные пакеты, включая Tkinter.",
     "Active profile": "Шаблон настроек для одиночного запуска или нового instance.",
@@ -393,20 +398,37 @@ class LlamaCppGUI:
         self.runtime_vars["llama_server_binary"] = tk.StringVar()
         self.runtime_vars["llama_server_cwd"] = tk.StringVar()
         self.runtime_vars["llama_server_library_path"] = tk.StringVar()
+        self.runtime_vars["llama_cpp_release_backend"] = tk.StringVar(value="auto")
         self._path_row(runtime, 0, "Python", self.runtime_vars["python_path"], self.browse_python)
         self._path_row(runtime, 1, "llama-server", self.runtime_vars["llama_server_binary"], self.browse_binary)
         self._path_row(runtime, 2, "Working dir", self.runtime_vars["llama_server_cwd"], self.browse_cwd, directory=True)
         self._path_row(runtime, 3, "LD library path", self.runtime_vars["llama_server_library_path"], self.browse_lib_dir, directory=True)
-        runtime_buttons = ttk.Frame(runtime)
-        runtime_buttons.grid(row=4, column=1, columnspan=2, sticky="w", pady=(8, 0))
-        self._button(runtime_buttons, text="Beginner setup", command=self.beginner_setup).pack(
+        self._combo_row(runtime, 4, "llama.cpp backend", self.runtime_vars["llama_cpp_release_backend"], list(BACKEND_CHOICES))
+
+        setup_buttons = ttk.Frame(runtime)
+        setup_buttons.grid(row=5, column=1, columnspan=2, sticky="w", pady=(8, 0))
+        self._button(setup_buttons, text="Beginner setup", command=self.beginner_setup).pack(
             side=tk.LEFT, padx=(0, 6)
         )
-        self._button(runtime_buttons, text="Auto-detect runtime", command=self.auto_detect_runtime).pack(side=tk.LEFT, padx=6)
-        self._button(runtime_buttons, text="Install Python libs", command=self.install_python_libraries).pack(
+        self._button(setup_buttons, text="Install Python libs", command=self.install_python_libraries).pack(
             side=tk.LEFT, padx=6
         )
-        self._button(runtime_buttons, text="Install system libs", command=self.install_system_libraries).pack(
+        self._button(setup_buttons, text="Install system libs", command=self.install_system_libraries).pack(
+            side=tk.LEFT, padx=6
+        )
+
+        llama_buttons = ttk.Frame(runtime)
+        llama_buttons.grid(row=6, column=1, columnspan=2, sticky="w", pady=(6, 0))
+        self._button(llama_buttons, text="Auto-detect runtime", command=self.auto_detect_runtime).pack(
+            side=tk.LEFT, padx=(0, 6)
+        )
+        self._button(llama_buttons, text="Check server version", command=self.check_llama_server_version).pack(
+            side=tk.LEFT, padx=6
+        )
+        self._button(llama_buttons, text="Check updates", command=self.check_llama_cpp_updates).pack(
+            side=tk.LEFT, padx=6
+        )
+        self._button(llama_buttons, text="Download llama-server", command=self.download_llama_server).pack(
             side=tk.LEFT, padx=6
         )
 
@@ -893,6 +915,80 @@ class LlamaCppGUI:
             messagebox.showwarning("Auto-detect runtime", message)
         else:
             messagebox.showinfo("Auto-detect runtime", message)
+
+    def _selected_release_backend(self) -> str:
+        backend = str(self.runtime_vars["llama_cpp_release_backend"].get() or "auto").strip().lower()
+        return backend if backend in BACKEND_CHOICES else "auto"
+
+    def _release_tool_command(self, command: str, *args: str) -> list[str]:
+        python_path = self._selected_python_path()
+        return [
+            python_path,
+            str(APP_DIR / "llama_cpp_release.py"),
+            "--backend",
+            self._selected_release_backend(),
+            command,
+            *args,
+        ]
+
+    def check_llama_server_version(self) -> None:
+        binary = str(self.runtime_vars["llama_server_binary"].get() or "").strip()
+        if not binary:
+            messagebox.showwarning("Check server version", "llama-server path is empty.")
+            return
+        command = self._release_tool_command("version", "--binary", binary)
+        library = str(self.runtime_vars["llama_server_library_path"].get() or "").strip()
+        if library:
+            command.extend(["--library", library])
+        self._run_command_window("Check server version", command, cwd=APP_DIR)
+
+    def check_llama_cpp_updates(self) -> None:
+        binary = str(self.runtime_vars["llama_server_binary"].get() or "").strip()
+        command = self._release_tool_command("check")
+        if binary:
+            command.extend(["--binary", binary])
+        library = str(self.runtime_vars["llama_server_library_path"].get() or "").strip()
+        if library:
+            command.extend(["--library", library])
+        self._run_command_window("Check llama.cpp updates", command, cwd=APP_DIR)
+
+    def download_llama_server(self) -> None:
+        backend = self._selected_release_backend()
+        if not messagebox.askyesno(
+            "Download llama-server",
+            "Download the latest prebuilt llama.cpp release from GitHub?\n\n"
+            f"Backend: {backend}\n\n"
+            "The downloaded server will be saved under runtime/llama.cpp and selected in Runtime.",
+        ):
+            return
+
+        def on_success() -> None:
+            manifest = read_manifest()
+            binary = str(manifest.get("binary_path") or "")
+            library = str(manifest.get("library_path") or "")
+            if binary:
+                self.runtime_vars["llama_server_binary"].set(binary)
+                self.runtime_vars["llama_server_cwd"].set(str(Path(binary).parent))
+            if library:
+                self.runtime_vars["llama_server_library_path"].set(library)
+            self._save_runtime_vars()
+            save_config(self.config)
+            self.manager.update_config(self.config)
+            self.refresh_status()
+            messagebox.showinfo(
+                "Download llama-server",
+                "llama-server was downloaded and selected.\n\n"
+                f"Release: {manifest.get('tag_name') or 'unknown'}\n"
+                f"Binary: {binary or 'not found'}\n\n"
+                "Restart any running server to use the new binary.",
+            )
+
+        self._run_command_window(
+            "Download llama-server",
+            self._release_tool_command("install"),
+            cwd=APP_DIR,
+            on_success=on_success,
+        )
 
     def _selected_python_path(self) -> str:
         python_path = str(self.runtime_vars["python_path"].get() or "").strip()

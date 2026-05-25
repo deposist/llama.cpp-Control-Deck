@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llama-cpp-control-deck"
-version = "1.0.0"
+version = "1.1.0"
 description = "Tkinter GUI and Ollama-compatible proxy for managing local llama.cpp servers"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -61,6 +61,7 @@ Source = "https://github.com/deposist/llama.cpp-Control-Deck"
 [tool.setuptools]
 py-modules = [
     "config",
+    "llama_cpp_release",
     "llama_cpp_gui",
     "llama_server_manager",
     "ollama_proxy",

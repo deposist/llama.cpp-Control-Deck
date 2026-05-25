@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+- GUI release-management controls for prebuilt `llama.cpp` binaries:
+  **Check server version**, **Check updates**, and **Download llama-server**.
+- `llama_cpp_release.py` helper for querying GitHub Releases, selecting a
+  Linux backend asset, downloading/extracting it, writing a managed install
+  manifest, and checking update status.
+- Runtime backend selector for `auto`, `cpu`, `vulkan`, `rocm`, `openvino`,
+  `sycl-fp16`, and `sycl-fp32`.
 
 ## [1.0.0] - 2026-05-25
 

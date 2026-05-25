@@ -32,6 +32,8 @@ Tkinter GUI + Ollama-compatible FastAPI proxy for managing one or many local
 - OpenAI-compatible workflow: copy URLs like `http://127.0.0.1:8081/v1`.
 - Automatic detection of `python`, `llama-server`, working directory, and
   `LD_LIBRARY_PATH`.
+- Automatic download/update flow for prebuilt `llama.cpp` `llama-server`
+  releases from GitHub.
 - Beginner setup mode that creates a local `.venv` and installs Python
   dependencies.
 - Interactive buttons for Python dependencies and system Tkinter packages.
@@ -255,6 +257,29 @@ python3 config.py --apply-runtime
 `--detect-runtime` only prints detected paths. `--apply-runtime` updates
 `config.json`.
 
+### Downloading And Updating `llama-server`
+
+The **Server → Runtime** block includes release-management buttons:
+
+- **Check server version** runs the selected `llama-server --version`.
+- **Check updates** checks the latest `ggml-org/llama.cpp` GitHub release and
+  compares it with the managed install when possible.
+- **Download llama-server** downloads the latest prebuilt archive, extracts it
+  under `runtime/llama.cpp/`, and updates Runtime paths automatically.
+
+Choose **llama.cpp backend** before downloading:
+
+| Backend | Notes |
+|---------|-------|
+| `auto` / `cpu` | Most compatible prebuilt Linux option. |
+| `vulkan` | GPU acceleration through Vulkan drivers. |
+| `rocm` | AMD ROCm build, requires ROCm runtime. |
+| `openvino` | Intel OpenVINO build. |
+| `sycl-fp16` / `sycl-fp32` | SYCL builds for supported systems. |
+
+Current upstream Linux releases may not include a CUDA prebuilt archive. For
+CUDA, build `llama.cpp` yourself and use **Auto-detect runtime** or **Browse**.
+
 ### CLI Mode
 
 The GUI is not required for diagnostics or headless use:
@@ -317,6 +342,7 @@ Tensor split: 3,1
 | `llama_server_manager.py` | process manager, state, health, CLI |
 | `ollama_proxy.py` | FastAPI Ollama-compatible proxy |
 | `config.py` | defaults, config merge, runtime detection |
+| `llama_cpp_release.py` | GitHub release check/download/install helper |
 | `start_gui.sh` | Linux launcher |
 | `config.example.json` | example configuration |
 | `requirements.txt` | runtime dependencies |
@@ -349,6 +375,7 @@ Before a pull request:
 | `No module named venv` / `.venv` cannot be created | system `python3-venv` is missing | `sudo apt install python3-venv python3-pip` |
 | `Tkinter is not available` | system Tkinter is missing | `sudo apt install python3-tk` or **Install system libs** |
 | `llama-server not found` | wrong binary path | **Auto-detect runtime** or `LLAMA_CPP_BINARY` |
+| downloaded server starts without GPU acceleration | CPU backend was selected or required driver is missing | choose `vulkan`/`rocm` backend or build CUDA manually |
 | server exits immediately | wrong model, missing `.so`, not enough VRAM | open **Logs** |
 | `Port 8081 is busy` | another process uses the port | change the port or stop the process |
 | `CUDA error: out of memory` | not enough VRAM | reduce Context, Batch, or GPU layers |
@@ -408,6 +435,8 @@ Tkinter GUI + Ollama-compatible FastAPI proxy для управления одн
 - OpenAI-compatible workflow: GUI копирует URL вида `http://127.0.0.1:8081/v1`.
 - Автообнаружение `python`, `llama-server`, working directory и
   `LD_LIBRARY_PATH`.
+- Автоматическое скачивание/обновление prebuilt `llama.cpp` `llama-server`
+  release с GitHub.
 - Beginner setup: создание локального `.venv` и установка Python-зависимостей
   одной командой.
 - Интерактивные кнопки установки Python-зависимостей и системного Tkinter.
@@ -632,6 +661,31 @@ python3 config.py --apply-runtime
 `--detect-runtime` только печатает найденные пути. `--apply-runtime` обновляет
 `config.json`.
 
+### Скачивание и обновление `llama-server`
+
+В блоке **Server → Runtime** есть кнопки управления release:
+
+- **Check server version** запускает `llama-server --version` для выбранного
+  бинарника.
+- **Check updates** проверяет последний release `ggml-org/llama.cpp` на GitHub
+  и сравнивает его с managed install, если он есть.
+- **Download llama-server** скачивает последний prebuilt archive, распаковывает
+  его в `runtime/llama.cpp/` и автоматически прописывает Runtime paths.
+
+Перед скачиванием выберите **llama.cpp backend**:
+
+| Backend | Примечание |
+|---------|------------|
+| `auto` / `cpu` | Самый совместимый prebuilt Linux-вариант. |
+| `vulkan` | GPU acceleration через Vulkan drivers. |
+| `rocm` | AMD ROCm build, нужен ROCm runtime. |
+| `openvino` | Intel OpenVINO build. |
+| `sycl-fp16` / `sycl-fp32` | SYCL builds для поддерживаемых систем. |
+
+В текущих upstream Linux releases может не быть CUDA prebuilt archive. Для CUDA
+соберите `llama.cpp` вручную и используйте **Auto-detect runtime** или
+**Browse**.
+
 ### CLI Режим
 
 GUI не обязателен для диагностики и headless-сценариев:
@@ -694,6 +748,7 @@ Tensor split: 3,1
 | `llama_server_manager.py` | process manager, state, health, CLI |
 | `ollama_proxy.py` | FastAPI Ollama-compatible proxy |
 | `config.py` | defaults, config merge, runtime detection |
+| `llama_cpp_release.py` | helper для проверки/скачивания/установки GitHub release |
 | `start_gui.sh` | Linux launcher |
 | `config.example.json` | пример конфигурации |
 | `requirements.txt` | runtime dependencies |
@@ -726,6 +781,7 @@ python3 -m py_compile config.py llama_cpp_gui.py llama_server_manager.py ollama_
 | `No module named venv` / `.venv` не создаётся | Нет системного `python3-venv` | `sudo apt install python3-venv python3-pip` |
 | `Tkinter is not available` | Нет системного Tkinter | `sudo apt install python3-tk` или кнопка **Install system libs** |
 | `llama-server not found` | Неверный путь | **Auto-detect runtime** или `LLAMA_CPP_BINARY` |
+| скачанный сервер работает без GPU acceleration | выбран CPU backend или нет нужного драйвера | выбрать `vulkan`/`rocm` backend или собрать CUDA вручную |
 | Сервер сразу завершается | неверная модель, нет `.so`, не хватает VRAM | открыть вкладку **Logs** |
 | `Port 8081 is busy` | порт занят другим процессом | сменить порт или остановить процесс |
 | `CUDA error: out of memory` | не хватает VRAM | уменьшить Context, Batch или GPU layers |

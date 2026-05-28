@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llama-cpp-control-deck"
-version = "1.1.0"
-description = "Tkinter GUI and Ollama-compatible proxy for managing local llama.cpp servers"
+version = "1.0.1"
+description = "Web and Tkinter control panels with an Ollama-compatible proxy for local llama.cpp servers"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -40,16 +40,9 @@ dependencies = [
     "httpx>=0.28.0,<1.0.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.24.0",
-    "ruff>=0.6.0",
-    "black>=24.0.0",
-]
-
 [project.scripts]
 llama-control-deck = "llama_cpp_gui:main"
+llama-control-deck-web = "control_web:main"
 llama-control-deck-manager = "llama_server_manager:main"
 llama-control-deck-config = "config:main"
 
@@ -61,29 +54,9 @@ Source = "https://github.com/deposist/llama.cpp-Control-Deck"
 [tool.setuptools]
 py-modules = [
     "config",
+    "control_web",
     "llama_cpp_release",
     "llama_cpp_gui",
     "llama_server_manager",
     "ollama_proxy",
 ]
-
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "C4", "UP"]
-ignore = ["E501", "B008", "C416"]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-
-[tool.black]
-line-length = 100
-target-version = ["py310"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]

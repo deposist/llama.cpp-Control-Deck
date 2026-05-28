@@ -522,6 +522,7 @@ DEFAULT_INSTANCES: list[dict[str, Any]] = [
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "schema_version": 1,
+    "ui_language": "ru",
     "python_path": str(VENV_PYTHON),
     "llama_server_binary": str(LLAMA_SERVER_BINARY),
     "llama_server_cwd": str(DEFAULT_CWD),

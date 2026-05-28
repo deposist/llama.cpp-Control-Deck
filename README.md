@@ -1,13 +1,13 @@
 # llama.cpp Control Deck
 
-**Desktop control panel and Ollama-compatible proxy for local `llama.cpp` servers.**
+**Web/Desktop control panel and Ollama-compatible proxy for local `llama.cpp` servers.**
 
 `llama.cpp Control Deck` helps you run one or many local GGUF models without
-turning every launch into a long shell command. It provides a Tkinter GUI,
-multi-instance process management, GPU/device diagnostics, log viewing,
-automatic runtime path detection, beginner-friendly setup, and an
-Ollama-compatible proxy that forwards requests to the OpenAI-compatible API
-exposed by `llama-server`.
+turning every launch into a long shell command. It provides a local FastAPI web
+UI, a legacy Tkinter GUI, multi-instance process management, GPU/device
+diagnostics, log viewing, automatic runtime path detection, beginner-friendly
+setup, and an Ollama-compatible proxy that forwards requests to the
+OpenAI-compatible API exposed by `llama-server`.
 
 [English](#english) | [Русский](#русский)
 
@@ -135,6 +135,42 @@ llama.cpp/build-cuda/bin/llama-server
 
 ### Running The GUI
 
+Recommended web control panel:
+
+```bash
+./start_web.sh
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+The web UI keeps the existing Python manager/proxy logic, adds a beginner
+launch flow, RU/EN language switching, validation warnings, logs, GPU/device
+diagnostics, release controls, and advanced settings in the browser. It uses
+FastAPI, server-rendered HTML, CSS, and vanilla JavaScript; Electron, Node.js,
+React, Vue, and Svelte are not required.
+
+Path fields in the web UI have **Browse** buttons. They open a local
+server-side picker for Python, `llama-server`, working directories,
+`LD_LIBRARY_PATH`, `.gguf` models, MMProj files, model directories, and preset
+files. The picker selects paths on the machine running `control_web.py`; it
+does not upload or copy files through the browser.
+
+Use **Runtime & updates** for `llama-server` release checks and downloads.
+Downloads run in the background and the page shows the current status plus the
+latest progress lines, so the browser does not look frozen during large
+archives.
+
+Use **Services** to manage multi-instance servers from the browser. The web UI
+can add, edit, validate, duplicate, delete, start, stop, and restart services,
+while keeping the existing `config.json` instance format compatible with the
+legacy Tkinter GUI and CLI.
+
+Legacy Tkinter GUI:
+
 ```bash
 ./start_gui.sh
 ```
@@ -154,6 +190,8 @@ python3 llama_cpp_gui.py
 Useful options:
 
 ```bash
+python3 control_web.py --help
+python3 control_web.py --host 127.0.0.1 --port 8765
 python3 llama_cpp_gui.py --help
 ./start_gui.sh --setup
 python3 llama_cpp_gui.py --geometry 1280x860
@@ -338,34 +376,16 @@ Tensor split: 3,1
 
 | File | Purpose |
 |------|---------|
+| `control_web.py` | local FastAPI Web UI |
 | `llama_cpp_gui.py` | Tkinter GUI |
 | `llama_server_manager.py` | process manager, state, health, CLI |
 | `ollama_proxy.py` | FastAPI Ollama-compatible proxy |
 | `config.py` | defaults, config merge, runtime detection |
 | `llama_cpp_release.py` | GitHub release check/download/install helper |
+| `start_web.sh` | Linux Web UI launcher |
 | `start_gui.sh` | Linux launcher |
 | `config.example.json` | example configuration |
 | `requirements.txt` | runtime dependencies |
-| `requirements-dev.txt` | test/lint dependencies |
-| `tests/` | smoke tests |
-
-### Development
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-
-ruff check .
-python3 -m pytest -q
-python3 -m py_compile config.py llama_cpp_gui.py llama_server_manager.py ollama_proxy.py
-```
-
-Before a pull request:
-
-- update README when behavior changes;
-- add tests for new logic;
-- do not commit `config.json`, `logs/`, `runtime/`, models, or API keys.
 
 ### Troubleshooting
 
@@ -388,20 +408,6 @@ By default, `llama-server` and the proxy are intended for trusted local
 environments. Do not bind services to `0.0.0.0` on untrusted networks without a
 firewall, VPN, reverse proxy authentication, or another access-control layer.
 Do not publish API keys, private paths, or logs with sensitive data.
-
-See [SECURITY.md](SECURITY.md).
-
-### Contributing
-
-Issues and pull requests are welcome. Especially useful contributions:
-
-- tests for different `llama.cpp` builds;
-- UX improvements that keep the interface simple;
-- documentation for popular clients;
-- reports about compatibility with new `llama-server` versions.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ### License
 
@@ -744,34 +750,16 @@ Tensor split: 3,1
 
 | Файл | Назначение |
 |------|------------|
+| `control_web.py` | local FastAPI Web UI |
 | `llama_cpp_gui.py` | Tkinter GUI |
 | `llama_server_manager.py` | process manager, state, health, CLI |
 | `ollama_proxy.py` | FastAPI Ollama-compatible proxy |
 | `config.py` | defaults, config merge, runtime detection |
 | `llama_cpp_release.py` | helper для проверки/скачивания/установки GitHub release |
+| `start_web.sh` | Linux Web UI launcher |
 | `start_gui.sh` | Linux launcher |
 | `config.example.json` | пример конфигурации |
 | `requirements.txt` | runtime dependencies |
-| `requirements-dev.txt` | test/lint dependencies |
-| `tests/` | smoke tests |
-
-### Разработка
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-
-ruff check .
-python3 -m pytest -q
-python3 -m py_compile config.py llama_cpp_gui.py llama_server_manager.py ollama_proxy.py
-```
-
-Перед pull request:
-
-- обновите README, если меняется поведение;
-- добавьте тесты для новой логики;
-- не коммитьте `config.json`, `logs/`, `runtime/`, модели и API-ключи.
 
 ### Устранение проблем
 
@@ -794,20 +782,6 @@ python3 -m py_compile config.py llama_cpp_gui.py llama_server_manager.py ollama_
 Не открывайте `0.0.0.0` в недоверенной сети без firewall, VPN, reverse proxy
 authentication или другого слоя контроля доступа. Не публикуйте API keys,
 приватные пути и логи с чувствительными данными.
-
-См. [SECURITY.md](SECURITY.md).
-
-### Как помочь
-
-Issues и pull requests приветствуются. Особенно полезны:
-
-- тесты на разные сборки `llama.cpp`;
-- улучшения UX без усложнения интерфейса;
-- документация для популярных клиентов;
-- отчёты о несовместимостях с новыми версиями `llama-server`.
-
-См. [CONTRIBUTING.md](CONTRIBUTING.md) и
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ### Лицензия
 

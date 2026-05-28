@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>llama.cpp Control Deck</title>
+    <link rel="stylesheet" href="/static/control.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>llama.cpp Control Deck</h1>
+        <p id="friendly-status">Loading...</p>
+      </div>
+      <div class="top-actions">
+        <label>
+          <span data-i18n="language">Language</span>
+          <select id="language">
+            <option value="ru">RU</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+        <button data-action="refresh" data-i18n="refresh">Refresh</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel primary">
+        <div class="panel-title">
+          <h2 data-i18n="beginner">Quick start</h2>
+          <span id="server-chip" class="chip">...</span>
+        </div>
+
+        <div id="warnings" class="warnings"></div>
+
+        <div class="field-grid">
+          <label>
+            <span>Profile</span>
+            <select id="active-profile"></select>
+          </label>
+          <label>
+            <span data-i18n="model">GGUF model</span>
+            <span class="path-field">
+              <input id="model-path" type="text" placeholder="/path/to/model.gguf" />
+              <button type="button" data-browse-target="model-path" data-browse-kind="model">Browse</button>
+            </span>
+          </label>
+          <label>
+            <span>Port</span>
+            <input id="port" type="number" min="1" max="65535" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button data-action="autodetect" data-i18n="auto_detect">Auto-detect runtime</button>
+          <button data-action="save" data-i18n="save">Save</button>
+          <button class="primary-action" data-action="server-start" data-i18n="start">Start</button>
+          <button data-action="server-stop" data-i18n="stop">Stop</button>
+          <button data-action="server-restart" data-i18n="restart">Restart</button>
+        </div>
+
+        <div class="url-row">
+          <label>
+            <span data-i18n="openai_url">OpenAI URL</span>
+            <input id="openai-url" type="text" readonly />
+          </label>
+          <button data-copy="openai-url" data-i18n="copy">Copy</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2 data-i18n="proxy">Ollama proxy</h2>
+          <span id="proxy-chip" class="chip">...</span>
+        </div>
+        <div class="field-grid">
+          <label>
+            <span>Proxy port</span>
+            <input id="proxy-port" type="number" min="1" max="65535" />
+          </label>
+          <label>
+            <span>Target OpenAI URL</span>
+            <input id="proxy-target" type="text" />
+          </label>
+        </div>
+        <div class="actions">
+          <button data-action="proxy-start" data-i18n="start">Start</button>
+          <button data-action="proxy-stop" data-i18n="stop">Stop</button>
+        </div>
+        <div class="url-row">
+          <label>
+            <span>Ollama URL</span>
+            <input id="ollama-url" type="text" readonly />
+          </label>
+          <button data-copy="ollama-url" data-i18n="copy">Copy</button>
+        </div>
+      </section>
+
+      <section class="panel wide">
+        <div class="panel-title">
+          <h2 data-i18n="runtime_updates">Runtime & updates</h2>
+          <span id="download-chip" class="chip">idle</span>
+        </div>
+        <div class="runtime-grid">
+          <div class="runtime-card">
+            <h3>Runtime</h3>
+            <p id="runtime-summary"></p>
+            <div class="actions">
+              <button data-action="autodetect" data-i18n="auto_detect">Auto-detect runtime</button>
+              <button data-action="release-status">Check release</button>
+              <button class="primary-action" data-action="release-download" data-i18n="download">Download llama-server</button>
+              <button data-action="download-status" data-i18n="download_status">Download status</button>
+            </div>
+          </div>
+          <div class="runtime-card">
+            <h3 data-i18n="download_status">Download status</h3>
+            <p id="download-message">No download running.</p>
+            <div class="progress-shell" aria-label="Download activity">
+              <div id="download-progress" class="progress-bar"></div>
+            </div>
+            <pre id="download-lines"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wide">
+        <details>
+          <summary data-i18n="advanced">Advanced settings</summary>
+          <div class="advanced-grid">
+            <label>
+              <span>Python</span>
+              <span class="path-field">
+                <input id="python-path" type="text" />
+                <button type="button" data-browse-target="python-path" data-browse-kind="python">Browse</button>
+              </span>
+            </label>
+            <label>
+              <span>llama-server</span>
+              <span class="path-field">
+                <input id="binary-path" type="text" />
+                <button type="button" data-browse-target="binary-path" data-browse-kind="llama_server">Browse</button>
+              </span>
+            </label>
+            <label>
+              <span>Working dir</span>
+              <span class="path-field">
+                <input id="cwd-path" type="text" />
+                <button type="button" data-browse-target="cwd-path" data-browse-kind="directory">Browse</button>
+              </span>
+            </label>
+            <label>
+              <span>LD library path</span>
+              <span class="path-field">
+                <input id="library-path" type="text" />
+                <button type="button" data-browse-target="library-path" data-browse-kind="library_dir">Browse</button>
+              </span>
+            </label>
+            <label>
+              <span>Context</span>
+              <input id="n-ctx" type="text" />
+            </label>
+            <label>
+              <span>GPU layers</span>
+              <input id="gpu-layers" type="text" />
+            </label>
+            <label>
+              <span>Threads</span>
+              <input id="threads" type="text" />
+            </label>
+            <label>
+              <span>Extra args</span>
+              <input id="extra-args" type="text" />
+            </label>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel wide">
+        <div class="panel-title">
+          <h2 data-i18n="services">Services</h2>
+          <div class="actions compact">
+            <button class="primary-action" data-action="service-add" data-i18n="add_service">Add service</button>
+            <button data-action="refresh" data-i18n="refresh">Refresh</button>
+          </div>
+        </div>
+        <div id="services" class="service-grid"></div>
+      </section>
+
+      <section class="panel wide">
+        <div class="panel-title">
+          <h2 data-i18n="diagnostics">Diagnostics</h2>
+          <div class="actions compact">
+            <button data-action="logs-latest">Latest</button>
+            <button data-action="logs-server" data-i18n="server">Server</button>
+            <button data-action="logs-proxy" data-i18n="proxy">Proxy</button>
+            <button data-action="devices" data-i18n="devices">GPU / devices</button>
+          </div>
+        </div>
+        <pre id="output"></pre>
+      </section>
+    </main>
+
+    <div id="service-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel">
+        <div class="panel-title">
+          <div>
+            <h2 id="service-modal-title">Service</h2>
+            <p id="service-modal-status" class="muted"></p>
+          </div>
+          <button data-action="service-close">Close</button>
+        </div>
+        <div id="service-validation" class="warnings"></div>
+        <div class="tabs">
+          <button class="tab active" data-tab="basic">Basic</button>
+          <button class="tab" data-tab="model">Model</button>
+          <button class="tab" data-tab="performance">Performance</button>
+          <button class="tab" data-tab="network">Network</button>
+          <button class="tab" data-tab="advanced">Advanced</button>
+        </div>
+
+        <form id="service-form">
+          <section class="tab-panel" data-panel="basic">
+            <div class="field-grid">
+              <label><span>ID</span><input id="svc-id" /></label>
+              <label><span>Name</span><input id="svc-name" /></label>
+              <label><span>Profile</span><select id="svc-profile"></select></label>
+              <label><span>Alias</span><input id="svc-alias" /></label>
+              <label class="inline-check"><input id="svc-enabled" type="checkbox" /> Enabled</label>
+            </div>
+          </section>
+          <section class="tab-panel hidden" data-panel="model">
+            <div class="field-grid">
+              <label><span>Model .gguf</span><span class="path-field"><input id="svc-model-path" /><button type="button" data-browse-target="svc-model-path" data-browse-kind="model">Browse</button></span></label>
+              <label><span>MMProj</span><span class="path-field"><input id="svc-mmproj-path" /><button type="button" data-browse-target="svc-mmproj-path" data-browse-kind="mmproj">Browse</button></span></label>
+              <label><span>Models dir</span><span class="path-field"><input id="svc-models-dir" /><button type="button" data-browse-target="svc-models-dir" data-browse-kind="directory">Browse</button></span></label>
+              <label><span>Models preset</span><span class="path-field"><input id="svc-models-preset" /><button type="button" data-browse-target="svc-models-preset" data-browse-kind="preset">Browse</button></span></label>
+            </div>
+          </section>
+          <section class="tab-panel hidden" data-panel="performance">
+            <div class="field-grid">
+              <label><span>Context</span><input id="svc-n-ctx" /></label>
+              <label><span>GPU layers</span><input id="svc-gpu-layers" /></label>
+              <label><span>Main GPU</span><input id="svc-main-gpu" /></label>
+              <label><span>Threads</span><input id="svc-threads" /></label>
+              <label><span>Batch threads</span><input id="svc-threads-batch" /></label>
+              <label><span>Batch</span><input id="svc-batch" /></label>
+              <label><span>Micro-batch</span><input id="svc-ubatch" /></label>
+              <label><span>Flash attention</span><select id="svc-flash-attn"><option>auto</option><option>on</option><option>off</option></select></label>
+              <label><span>Split mode</span><select id="svc-split-mode"><option>none</option><option>layer</option><option>row</option><option>tensor</option></select></label>
+              <label><span>Tensor split</span><input id="svc-tensor-split" /></label>
+            </div>
+          </section>
+          <section class="tab-panel hidden" data-panel="network">
+            <div class="field-grid">
+              <label><span>Host</span><input id="svc-host" /></label>
+              <label><span>Port</span><input id="svc-port" type="number" min="1" max="65535" /></label>
+              <label><span>API key</span><input id="svc-api-key" type="password" /></label>
+              <label><span>OpenAI URL preview</span><input id="svc-url-preview" readonly /></label>
+            </div>
+          </section>
+          <section class="tab-panel hidden" data-panel="advanced">
+            <div class="field-grid">
+              <label><span>Router max models</span><input id="svc-models-max" /></label>
+              <label><span>Extra args</span><input id="svc-extra-args" /></label>
+              <label class="inline-check"><input id="svc-use-mmap" type="checkbox" /> mmap</label>
+              <label class="inline-check"><input id="svc-use-mlock" type="checkbox" /> mlock</label>
+              <label class="inline-check"><input id="svc-webui" type="checkbox" /> web UI</label>
+              <label class="inline-check"><input id="svc-cont-batching" type="checkbox" /> continuous batching</label>
+              <label class="inline-check"><input id="svc-metrics" type="checkbox" /> metrics</label>
+              <label class="inline-check"><input id="svc-slots" type="checkbox" /> slots</label>
+              <label class="inline-check"><input id="svc-models-autoload" type="checkbox" /> router autoload</label>
+            </div>
+            <h3 data-i18n="command_preview">Command preview</h3>
+            <pre id="svc-command-preview"></pre>
+          </section>
+        </form>
+
+        <div class="actions modal-actions">
+          <button data-action="service-validate">Validate</button>
+          <button data-action="service-save" data-i18n="save">Save</button>
+          <button class="primary-action" data-action="service-save-start">Create and start</button>
+          <button data-action="service-close">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="path-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-panel path-modal-panel">
+        <div class="panel-title">
+          <div>
+            <h2 id="path-modal-title">Choose path</h2>
+            <p id="path-modal-kind" class="muted"></p>
+          </div>
+          <button data-action="path-close">Close</button>
+        </div>
+        <div class="path-toolbar">
+          <label>
+            <span>Start</span>
+            <select id="path-roots"></select>
+          </label>
+          <button type="button" id="path-up">Up</button>
+        </div>
+        <label>
+          <span>Current path</span>
+          <span class="path-field">
+            <input id="path-current" type="text" />
+            <button type="button" id="path-open">Open</button>
+          </span>
+        </label>
+        <div id="path-validation" class="warnings"></div>
+        <div id="path-entries" class="path-entries" role="list"></div>
+        <div class="actions modal-actions">
+          <button id="path-select-current" type="button">Select this folder</button>
+          <button class="primary-action" id="path-select" type="button">Select</button>
+          <button data-action="path-close" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" role="status"></div>
+    <script>
+      window.__INITIAL_STATE__ = __CONTROL_DECK_INITIAL_STATE__;
+    </script>
+    <script src="/static/control.js"></script>
+  </body>
+</html>

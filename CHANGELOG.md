@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-28
+
 ### Added
+- Local FastAPI web control panel (`control_web.py`) with a browser-based
+  beginner flow, RU/EN language toggle, status polling, validation warnings,
+  logs/devices/release endpoints, and no Electron/Node dependency.
+- Dedicated web UI **Runtime & updates** section for `llama-server` release
+  checks/downloads, including background download status and progress log
+  polling instead of placing update controls in the logs area.
+- Web UI **Services** management for adding, editing, validating, duplicating,
+  deleting, starting, stopping, and restarting configured `instances` without
+  editing `config.json` by hand.
+- Server-side **Browse** path picker in the web UI for Python, `llama-server`,
+  working/library directories, GGUF models, MMProj files, model directories,
+  and preset files.
+- `start_web.sh` launcher and `llama-control-deck-web` entry point for the new
+  web UI while keeping the Tkinter GUI as a legacy fallback.
 - GUI release-management controls for prebuilt `llama.cpp` binaries:
   **Check server version**, **Check updates**, and **Download llama-server**.
 - `llama_cpp_release.py` helper for querying GitHub Releases, selecting a
@@ -28,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   blocks on HTTP health checks.
 - Graceful shutdown dialog when closing the GUI window (offers to stop
   running services).
-- `pyproject.toml` with ruff, black, and pytest configuration.
+- `pyproject.toml` packaging metadata.
 - Structured logging in `llama_server_manager` (`logs/llama_server_manager.log`).
 - Auto-detection of `llama-server` binary, Python runtime, and models
   directory via `LLAMA_CPP_BINARY`, `LLAMA_CPP_PYTHON`, `LLAMA_CPP_LIB_DIR`,
@@ -39,8 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Beginner setup** button for creating `.venv` and installing dependencies.
 - GUI buttons for installing Python dependencies from `requirements.txt` and
   system Tkinter/Python packages through the detected package manager.
-- `config.example.json` template, `.gitignore`, `LICENSE`, `CONTRIBUTING.md`.
-- `requirements-dev.txt` for development dependencies.
+- `config.example.json` template, `.gitignore`, and `LICENSE`.
 
 ### Changed
 - `start_gui.sh` now resolves Python via `LLAMA_CPP_PYTHON`, then local

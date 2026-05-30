@@ -3,6 +3,9 @@ const state = {
   serviceMode: "create",
   serviceOriginalId: "",
   serviceRunning: false,
+  lastDeletedService: null,
+  selectedServices: new Set(),
+  healthHistory: {},
   pathPicker: {
     targetId: "",
     kind: "file",
@@ -55,11 +58,82 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function applyTheme(theme) {
+  const selected = theme === "dark" || theme === "light" ? theme : "auto";
+  const effective =
+    selected === "auto"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : selected;
+  document.documentElement.dataset.theme = effective;
+  localStorage.setItem("controlDeckTheme", selected);
+  const button = byId("theme-toggle");
+  if (button) button.textContent = effective === "dark" ? "☀ Light" : "☾ Dark";
+}
+
+function toggleTheme() {
+  const current = document.documentElement.dataset.theme || "light";
+  applyTheme(current === "dark" ? "light" : "dark");
+}
+
+function setConnectionState(online) {
+  const banner = byId("connection-banner");
+  if (!banner) return;
+  banner.textContent = online ? t("online") : t("offline");
+  banner.classList.toggle("hidden", online);
+  if (!online) announce(banner.textContent);
+}
+
+function formatBytes(value) {
+  const size = Number(value || 0);
+  if (!size) return "0 B";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  const index = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(size / 1024 ** index)} ${units[index]}`;
+}
+
 function toast(message) {
   const node = byId("toast");
   node.textContent = message;
   node.classList.add("visible");
+  announce(message);
   window.setTimeout(() => node.classList.remove("visible"), 2800);
+}
+
+function announce(message) {
+  const node = byId("aria-live");
+  if (node) node.textContent = message;
+}
+
+function getFocusableElements(container) {
+  return Array.from(
+    container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.disabled && el.offsetParent !== null);
+}
+
+function trapFocus(container, event) {
+  const focusable = getFocusableElements(container);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.key === "Tab") {
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+function closeAllModals() {
+  closeServiceModal();
+  closePathPicker();
+  closeFirstRunWizard();
 }
 
 async function api(path, options = {}) {
@@ -74,11 +148,27 @@ async function api(path, options = {}) {
   return data;
 }
 
+function reportClientError(error, source = "web") {
+  const payload = {
+    source,
+    message: String(error?.message || error || "Unknown client error"),
+    stack: String(error?.stack || ""),
+  };
+  fetch("/api/client-error", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function setText() {
   document.documentElement.lang = state.data.config?.ui_language || "ru";
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     node.textContent = t(node.dataset.i18n);
   });
+  document
+    .querySelectorAll('input[type="text"], input:not([type]), textarea')
+    .forEach((node) => node.setAttribute("dir", "auto"));
 }
 
 function setChip(node, status) {
@@ -163,22 +253,76 @@ function modelBasename(item) {
   return value.split("/").filter(Boolean).pop() || value || "no model";
 }
 
+function updateHealthHistory(item) {
+  const id = item.id || item.name;
+  if (!id) return [];
+  const history = state.healthHistory[id] || [];
+  history.push(item.running && item.healthy ? 1 : item.running ? 0.5 : 0);
+  state.healthHistory[id] = history.slice(-10);
+  return state.healthHistory[id];
+}
+
+function makeHealthSparkline(history) {
+  const sparkline = document.createElement("div");
+  sparkline.className = "health-sparkline";
+  sparkline.setAttribute("aria-label", "Recent health checks");
+  (history || []).forEach((value) => {
+    const point = document.createElement("span");
+    point.className = value === 1 ? "good" : value === 0.5 ? "warn" : "bad";
+    sparkline.appendChild(point);
+  });
+  return sparkline;
+}
+
 function renderInstances() {
   const body = byId("services");
   body.innerHTML = "";
-  (state.data.instances || []).forEach((item) => {
+  const instances = state.data.instances || [];
+  if (!instances.length) {
+    const empty = document.createElement("article");
+    empty.className = "service-empty";
+    const title = document.createElement("h3");
+    title.textContent = state.data.config?.ui_language === "ru" ? "Сервисов пока нет" : "No services yet";
+    const text = document.createElement("p");
+    text.textContent =
+      state.data.config?.ui_language === "ru"
+        ? "Добавьте первый сервис, чтобы запустить локальную модель из браузера."
+        : "Add your first service to launch a local model from the browser.";
+    const button = document.createElement("button");
+    button.className = "primary-action";
+    button.dataset.action = "service-add";
+    button.textContent = t("add_service");
+    empty.append(title, text, button);
+    body.appendChild(empty);
+    return;
+  }
+  instances.forEach((item) => {
+    const healthHistory = updateHealthHistory(item);
     const card = document.createElement("article");
     card.className = "service-card";
+    card.draggable = true;
+    card.dataset.serviceDrag = item.id;
 
     const header = document.createElement("header");
     const titleDiv = document.createElement("div");
+    const selectLabel = document.createElement("label");
+    selectLabel.className = "service-select";
+    const select = document.createElement("input");
+    select.type = "checkbox";
+    select.dataset.serviceSelect = item.id;
+    select.checked = state.selectedServices.has(item.id);
+    const selectText = document.createElement("span");
+    selectText.textContent = t("select");
+    selectLabel.append(select, selectText);
     const h3 = document.createElement("h3");
     h3.textContent = item.name || item.id;
     const muted = document.createElement("div");
     muted.className = "muted";
     muted.textContent = (item.profile || "") + " \u00b7 " + modelBasename(item);
+    titleDiv.appendChild(selectLabel);
     titleDiv.appendChild(h3);
     titleDiv.appendChild(muted);
+    titleDiv.appendChild(makeHealthSparkline(healthHistory));
 
     const chip = document.createElement("span");
     chip.className = "chip";
@@ -236,6 +380,7 @@ function renderInstances() {
 
 function render() {
   setText();
+  applyTheme(localStorage.getItem("controlDeckTheme") || "auto");
   const config = state.data.config || {};
   const profile = config.profile || {};
   const runtime = config.runtime || {};
@@ -268,6 +413,26 @@ function render() {
 
   renderWarnings();
   renderInstances();
+  byId("undo-delete")?.classList.toggle("hidden", !state.lastDeletedService);
+  maybeShowFirstRunWizard();
+}
+
+function maybeShowFirstRunWizard() {
+  if (localStorage.getItem("controlDeckFirstRunDismissed") === "1") return;
+  const warningCodes = new Set((state.data.validation || []).map((item) => item.code));
+  const needsSetup = warningCodes.has("missing_binary") || warningCodes.has("missing_model");
+  if (needsSetup) {
+    const modal = byId("first-run-modal");
+    if (modal?.classList.contains("hidden")) {
+      modal.classList.remove("hidden");
+      window.setTimeout(() => modal.querySelector("button")?.focus(), 50);
+    }
+  }
+}
+
+function closeFirstRunWizard() {
+  byId("first-run-modal")?.classList.add("hidden");
+  localStorage.setItem("controlDeckFirstRunDismissed", "1");
 }
 
 function renderServiceValidation(items) {
@@ -360,7 +525,7 @@ function renderPathEntries(entries) {
     const meta = document.createElement("span");
     meta.className = "muted";
     const parts = [];
-    if (entry.size) parts.push(`${entry.size} bytes`);
+    if (entry.size) parts.push(formatBytes(entry.size));
     if (entry.executable) parts.push("executable");
     if (entry.has_llama_libs) parts.push("llama libs");
     if (!entry.selectable && entry.type === "file") parts.push("not selectable");
@@ -394,6 +559,7 @@ async function openPathPicker(targetId, kind) {
   const currentValue = byId(targetId)?.value || "";
   const startPath = currentValue || state.pathPicker.lastByKind[state.pathPicker.kind] || roots[0]?.path || "/";
   await loadPathList(startPath, state.pathPicker.kind);
+  window.setTimeout(() => byId("path-current")?.focus(), 50);
 }
 
 function closePathPicker() {
@@ -427,6 +593,10 @@ function openServiceModal(mode) {
     .querySelector('[data-action="service-save-start"]')
     .classList.toggle("hidden", mode !== "create");
   byId("service-modal").classList.remove("hidden");
+  window.setTimeout(() => {
+    const firstFocus = byId("svc-name") || byId("svc-id");
+    if (firstFocus) firstFocus.focus();
+  }, 50);
 }
 
 function closeServiceModal() {
@@ -472,13 +642,17 @@ let _refreshPending = false;
 async function refresh() {
   if (_refreshPending) return;
   _refreshPending = true;
+  document.body.classList.add("is-refreshing");
   try {
     state.data = await api("/api/state");
+    setConnectionState(true);
     render();
   } catch (error) {
+    setConnectionState(false);
     toast(error.message);
   } finally {
     _refreshPending = false;
+    document.body.classList.remove("is-refreshing");
   }
 }
 
@@ -508,11 +682,15 @@ async function action(name) {
   if (name === "save") return saveConfig();
   if (name === "refresh") return refresh();
   if (name === "service-add") return serviceAdd();
+  if (name === "services-start-selected") return batchInstanceAction("start");
+  if (name === "services-stop-selected") return batchInstanceAction("stop");
+  if (name === "services-undo-delete") return undoDeleteService();
   if (name === "service-close") return closeServiceModal();
   if (name === "service-save") return serviceSave(false);
   if (name === "service-save-start") return serviceSave(true);
   if (name === "service-validate") return serviceValidate();
   if (name === "path-close") return closePathPicker();
+  if (name === "first-run-close") return closeFirstRunWizard();
   if (name.startsWith("logs-")) return loadLogs(name.replace("logs-", ""));
 
   if (name.startsWith("server-") || name.startsWith("proxy-")) {
@@ -531,13 +709,59 @@ async function action(name) {
 
 async function loadLogs(kind) {
   const result = await api(`/api/logs?kind=${encodeURIComponent(kind)}&lines=240`);
-  byId("output").textContent = result.text || "No logs";
+  const text = result.text || "No logs";
+  const hint = diagnosticHint(text);
+  byId("output").textContent = hint ? `${hint}\n\n${text}` : text;
+  if (hint) announce(hint);
+}
+
+function diagnosticHint(text) {
+  const value = String(text || "").toLowerCase();
+  if (value.includes("cuda") && (value.includes("out of memory") || value.includes("oom"))) {
+    return "Hint: CUDA out of memory detected. Try reducing Context, Batch, Micro-batch, or GPU layers.";
+  }
+  if (value.includes("address already in use") || value.includes("port") && value.includes("busy")) {
+    return "Hint: Port conflict detected. Choose another port or stop the process that owns this port.";
+  }
+  if (value.includes("no such file") || value.includes("not found")) {
+    return "Hint: Missing file detected. Check llama-server, model path, MMProj path, and LD library path.";
+  }
+  if (value.includes("failed to load model") || value.includes("invalid model")) {
+    return "Hint: Model load failed. Check that the selected .gguf file exists and matches the chosen profile.";
+  }
+  if (value.includes("libllama") || value.includes("libggml") || value.includes("shared object")) {
+    return "Hint: Shared library error detected. Check LD library path or run Auto-detect runtime.";
+  }
+  return "";
 }
 
 async function instanceAction(id, verb) {
   const result = await api(`/api/instances/${encodeURIComponent(id)}/${verb}`, { method: "POST" });
   toast(result.message);
   await refresh();
+}
+
+async function batchInstanceAction(verb) {
+  const ids = Array.from(state.selectedServices);
+  if (!ids.length) {
+    toast(state.data.config?.ui_language === "ru" ? "Выберите хотя бы один сервис." : "Select at least one service.");
+    return;
+  }
+  for (const id of ids) {
+    await api(`/api/instances/${encodeURIComponent(id)}/${verb}`, { method: "POST" });
+  }
+  toast(`${verb} requested for ${ids.length} service(s).`);
+  await refresh();
+}
+
+async function saveServiceOrder(ids) {
+  const result = await api("/api/instances/reorder", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+  state.data = result.details;
+  render();
+  toast(result.message);
 }
 
 async function serviceAdd() {
@@ -563,14 +787,17 @@ async function serviceDuplicate(id) {
 async function serviceDelete(id) {
   const service = (state.data.instances || []).find((item) => item.id === id);
   const stop = service?.running ? "&stop=true" : "";
-  const message = service?.running ? "Stop and delete this running service?" : "Delete this service?";
+  const message = service?.running
+    ? "This service is running. Stop and delete it now? This cannot be undone."
+    : "Delete this service? This cannot be undone.";
   if (!window.confirm(message)) return;
   const result = await api(`/api/instances/${encodeURIComponent(id)}?${stop.replace("&", "")}`, { method: "DELETE" });
-  toast(result.message);
+  state.lastDeletedService = result.details?.instance || service || null;
+  toast(`${result.message} Press Ctrl+Z to undo.`);
   await refresh();
 }
 
-async function serviceValidate() {
+async function serviceValidate(silent = false) {
   const result = await api("/api/instances/validate", {
     method: "POST",
     body: JSON.stringify({
@@ -579,7 +806,7 @@ async function serviceValidate() {
   });
   renderServiceValidation(result.details.validation || []);
   renderCommandPreview(result.details.command || [], result.details.command_error || "");
-  toast(result.message);
+  if (!silent) toast(result.message);
   return result;
 }
 
@@ -604,6 +831,25 @@ async function serviceSave(start) {
   await refresh();
 }
 
+async function undoDeleteService() {
+  if (!state.lastDeletedService) {
+    toast("Nothing to undo.");
+    return;
+  }
+  const result = await api("/api/instances", {
+    method: "POST",
+    body: JSON.stringify({ instance: state.lastDeletedService, start: false }),
+  });
+  if (!result.ok) {
+    renderServiceValidation(result.details?.validation || []);
+    toast(result.message || "Could not restore service.");
+    return;
+  }
+  state.lastDeletedService = null;
+  toast("Service restored.");
+  await refresh();
+}
+
 document.addEventListener("click", async (event) => {
   const actionName = event.target.dataset.action;
   const copyId = event.target.dataset.copy;
@@ -612,6 +858,7 @@ document.addEventListener("click", async (event) => {
   const serviceEditId = event.target.dataset.serviceEdit;
   const serviceDuplicateId = event.target.dataset.serviceDuplicate;
   const serviceDeleteId = event.target.dataset.serviceDelete;
+  const serviceSelectId = event.target.dataset.serviceSelect;
   const browseTarget = event.target.dataset.browseTarget;
   const browseKind = event.target.dataset.browseKind;
   const tab = event.target.dataset.tab;
@@ -627,7 +874,44 @@ document.addEventListener("click", async (event) => {
     if (serviceEditId) await serviceEdit(serviceEditId);
     if (serviceDuplicateId) await serviceDuplicate(serviceDuplicateId);
     if (serviceDeleteId) await serviceDelete(serviceDeleteId);
+    if (serviceSelectId) {
+      if (event.target.checked) state.selectedServices.add(serviceSelectId);
+      else state.selectedServices.delete(serviceSelectId);
+    }
     if (tab) switchServiceTab(tab);
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+let _draggedServiceId = "";
+byId("services").addEventListener("dragstart", (event) => {
+  const card = event.target.closest("[data-service-drag]");
+  if (!card) return;
+  _draggedServiceId = card.dataset.serviceDrag || "";
+  event.dataTransfer.effectAllowed = "move";
+});
+
+byId("services").addEventListener("dragover", (event) => {
+  if (!_draggedServiceId) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+});
+
+byId("services").addEventListener("drop", async (event) => {
+  const target = event.target.closest("[data-service-drag]");
+  if (!target || !_draggedServiceId) return;
+  event.preventDefault();
+  const targetId = target.dataset.serviceDrag || "";
+  if (targetId === _draggedServiceId) return;
+  const ids = (state.data.instances || []).map((item) => item.id);
+  const from = ids.indexOf(_draggedServiceId);
+  const to = ids.indexOf(targetId);
+  if (from < 0 || to < 0) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  _draggedServiceId = "";
+  try {
+    await saveServiceOrder(ids);
   } catch (error) {
     toast(error.message);
   }
@@ -719,9 +1003,19 @@ byId("svc-profile").addEventListener("change", async () => {
   }
 });
 
+let _serviceValidationTimer = null;
 byId("service-form").addEventListener("input", () => {
   const data = serviceFormData();
   byId("svc-url-preview").value = `http://${data.host || "127.0.0.1"}:${data.port || ""}/v1`;
+  if (_serviceValidationTimer) clearTimeout(_serviceValidationTimer);
+  _serviceValidationTimer = window.setTimeout(async () => {
+    if (byId("service-modal")?.classList.contains("hidden")) return;
+    try {
+      await serviceValidate(true);
+    } catch (error) {
+      renderServiceValidation([{ message: error.message, next_action: "" }]);
+    }
+  }, 450);
 });
 
 byId("language").addEventListener("change", async () => {
@@ -746,5 +1040,50 @@ byId("active-profile").addEventListener("change", async () => {
   }
 });
 
+byId("theme-toggle")?.addEventListener("click", toggleTheme);
+window.addEventListener("online", () => setConnectionState(true));
+window.addEventListener("offline", () => setConnectionState(false));
+window.addEventListener("error", (event) => reportClientError(event.error || event.message, "window.error"));
+window.addEventListener("unhandledrejection", (event) => reportClientError(event.reason, "unhandledrejection"));
+
+applyTheme(localStorage.getItem("controlDeckTheme") || "auto");
 render();
-window.setInterval(refresh, 2500);
+
+let _refreshTimer = null;
+let _refreshInterval = 2500;
+
+function scheduleRefresh() {
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  _refreshTimer = window.setTimeout(async () => {
+    const start = performance.now();
+    await refresh();
+    const elapsed = performance.now() - start;
+    if (elapsed > 1500) _refreshInterval = 5000;
+    else if (elapsed < 500) _refreshInterval = 2500;
+    scheduleRefresh();
+  }, _refreshInterval);
+}
+
+scheduleRefresh();
+
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    undoDeleteService();
+    return;
+  }
+  if (event.key === "Escape") {
+    closeAllModals();
+  }
+  const activeModal =
+    !byId("service-modal")?.classList.contains("hidden")
+      ? byId("service-modal")
+      : !byId("path-modal")?.classList.contains("hidden")
+      ? byId("path-modal")
+      : !byId("first-run-modal")?.classList.contains("hidden")
+      ? byId("first-run-modal")
+      : null;
+  if (activeModal && event.key === "Tab") {
+    trapFocus(activeModal.querySelector(".modal-panel"), event);
+  }
+});

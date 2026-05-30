@@ -26,6 +26,8 @@ APP_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = APP_DIR / "config.json"
 LOG_DIR = APP_DIR / "logs"
 RUNTIME_DIR = APP_DIR / "runtime"
+_CONFIG_CACHE_MTIME: float | None = None
+_CONFIG_CACHE_VALUE: dict[str, Any] | None = None
 RUNTIME_KEYS = (
     "python_path",
     "llama_server_binary",
@@ -596,7 +598,15 @@ def merge_defaults(value: Any, default: Any) -> Any:
 
 
 def load_config() -> dict[str, Any]:
+    global _CONFIG_CACHE_MTIME, _CONFIG_CACHE_VALUE
     ensure_dirs()
+    if CONFIG_PATH.exists():
+        try:
+            mtime = CONFIG_PATH.stat().st_mtime
+            if _CONFIG_CACHE_VALUE is not None and _CONFIG_CACHE_MTIME == mtime:
+                return deepcopy(_CONFIG_CACHE_VALUE)
+        except OSError:
+            pass
     if not CONFIG_PATH.exists():
         config = deepcopy(DEFAULT_CONFIG)
         save_config(config)
@@ -613,15 +623,28 @@ def load_config() -> dict[str, Any]:
     for name in PROFILE_ORDER:
         profiles[name] = merge_defaults(profiles.get(name), DEFAULT_CONFIG["profiles"][name])
     apply_runtime_autodetect(config, override=False, deep_search=False)
+    try:
+        _CONFIG_CACHE_MTIME = CONFIG_PATH.stat().st_mtime
+        _CONFIG_CACHE_VALUE = deepcopy(config)
+    except OSError:
+        _CONFIG_CACHE_MTIME = None
+        _CONFIG_CACHE_VALUE = None
     return config
 
 
 def save_config(config: dict[str, Any]) -> None:
+    global _CONFIG_CACHE_MTIME, _CONFIG_CACHE_VALUE
     ensure_dirs()
     tmp_path = CONFIG_PATH.with_suffix(".json.tmp")
     with tmp_path.open("w", encoding="utf-8") as fh:
         json.dump(config, fh, ensure_ascii=False, indent=2)
     os.replace(tmp_path, CONFIG_PATH)
+    try:
+        _CONFIG_CACHE_MTIME = CONFIG_PATH.stat().st_mtime
+        _CONFIG_CACHE_VALUE = deepcopy(config)
+    except OSError:
+        _CONFIG_CACHE_MTIME = None
+        _CONFIG_CACHE_VALUE = None
 
 
 def active_profile(config: dict[str, Any]) -> dict[str, Any]:

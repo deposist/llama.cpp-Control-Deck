@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-05-30
+
+### Added
+- Web UI dark mode with persisted theme preference and `prefers-color-scheme`
+  fallback.
+- First-run setup wizard for missing runtime/model configuration.
+- Empty Services state with a primary **Add service** call to action.
+- Keyboard accessibility improvements: `Escape` closes modals, focus stays
+  inside active dialogs, and modals focus the first useful field on open.
+- Offline/connection-loss banner for failed `/api/state` polling.
+- Inline service validation with debounce and live command preview updates.
+- Batch service operations for starting/stopping selected services.
+- Drag-and-drop service reordering with `POST /api/instances/reorder`.
+- Undo delete flow for removed services via **Undo delete** and `Ctrl+Z`/`Cmd+Z`.
+- Health sparklines in service cards for recent health-check history.
+- Local browser error telemetry endpoint (`POST /api/client-error`) writing to
+  `logs/web-client-errors.jsonl`.
+- Broader RU/EN i18n coverage for legacy labels, dialogs, buttons, path picker,
+  service editor fields, and first-run wizard.
+
+### Changed
+- Web UI polling now uses adaptive `setTimeout` instead of fixed `setInterval`.
+- Tkinter logs are refreshed only when the Logs tab is active, reducing disk I/O.
+- Tkinter instance table updates existing rows in place instead of recreating the
+  whole Treeview every refresh.
+- `load_config()` now uses an mtime-based cache with defensive `deepcopy()`.
+- Path picker file sizes are shown as human-readable IEC units.
+- Text inputs get `dir="auto"` for mixed LTR/RTL text.
+
+### Fixed
+- Improved destructive delete confirmation wording.
+- Responsive modal panels now cap height at `90vh` and scroll internally.
+
 ## [1.0.2] - 2026-05-30
 
 ### Fixed

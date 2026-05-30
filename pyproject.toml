@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llama-cpp-control-deck"
-version = "1.0.2"
+version = "1.0.3"
 description = "Web and Tkinter control panels with an Ollama-compatible proxy for local llama.cpp servers"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -288,6 +288,7 @@ class LlamaCppGUI:
         self.root.rowconfigure(0, weight=1)
 
         notebook = ttk.Notebook(self.root)
+        self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
         server_tab = self._create_scrollable_tab(notebook, "Server")
@@ -295,6 +296,7 @@ class LlamaCppGUI:
         proxy_tab = self._create_scrollable_tab(notebook, "Ollama proxy")
         devices_tab = ttk.Frame(notebook, padding=10)
         logs_tab = ttk.Frame(notebook, padding=10)
+        self.logs_tab = logs_tab
         help_tab = ttk.Frame(notebook, padding=10)
         notebook.add(devices_tab, text="GPU / devices")
         notebook.add(logs_tab, text="Logs")
@@ -1351,28 +1353,39 @@ class LlamaCppGUI:
         selected = self.selected_instance_id
         self._refreshing_instances_table = True
         try:
-            self.instances_tree.delete(*self.instances_tree.get_children())
+            existing_ids = set(self.instances_tree.get_children())
+            desired_ids: list[str] = []
             for instance in self._instances():
                 status = self.manager.instance_status(instance)
+                instance_id = str(status["id"])
+                desired_ids.append(instance_id)
                 owner = status.get("port_owner")
                 state = "running" if status["running"] else "stopped"
                 if owner and not status["running"]:
                     state = "port busy"
                 values = (
-                "yes" if status["enabled"] else "no",
-                status["name"],
-                status["profile"],
-                status["host"],
-                status["port"],
-                status.get("main_gpu", ""),
-                status.get("n_ctx", ""),
-                status["alias"],
-                state,
-                status.get("pid") or "",
-                "yes" if status["healthy"] else "no",
-                status["openai_url"],
+                    "yes" if status["enabled"] else "no",
+                    status["name"],
+                    status["profile"],
+                    status["host"],
+                    status["port"],
+                    status.get("main_gpu", ""),
+                    status.get("n_ctx", ""),
+                    status["alias"],
+                    state,
+                    status.get("pid") or "",
+                    "yes" if status["healthy"] else "no",
+                    status["openai_url"],
                 )
-                self.instances_tree.insert("", tk.END, iid=status["id"], values=values)
+                if instance_id in existing_ids:
+                    self.instances_tree.item(instance_id, values=values)
+                else:
+                    self.instances_tree.insert("", tk.END, iid=instance_id, values=values)
+
+            for stale_id in existing_ids - set(desired_ids):
+                self.instances_tree.delete(stale_id)
+            for index, instance_id in enumerate(desired_ids):
+                self.instances_tree.move(instance_id, "", index)
 
             ids = list(self.instances_tree.get_children())
             if selected and selected in ids:
@@ -1752,7 +1765,12 @@ class LlamaCppGUI:
         self.status_vars["proxy"].set(proxy_text)
         self.status_vars["urls"].set(urls_text)
         self.refresh_instances_table()
-        self.refresh_logs()
+        try:
+            selected_tab = self.notebook.nametowidget(self.notebook.select())
+            if selected_tab is self.logs_tab:
+                self.refresh_logs()
+        except Exception:
+            pass
         self._refresh_job = self.root.after(3000, self.refresh_status)
 
     def on_close(self) -> None:

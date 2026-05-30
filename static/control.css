@@ -2,6 +2,7 @@
   color-scheme: light;
   --bg: #f5f7f9;
   --panel: #ffffff;
+  --control: #ffffff;
   --text: #17202a;
   --muted: #607080;
   --line: #d8e0e8;
@@ -10,6 +11,21 @@
   --bad: #b42318;
   --warn: #9a6700;
   --good: #067647;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --panel: #111827;
+  --control: #0f172a;
+  --text: #e5e7eb;
+  --muted: #a7b0be;
+  --line: #263244;
+  --accent: #60a5fa;
+  --accent-strong: #93c5fd;
+  --bad: #f87171;
+  --warn: #fbbf24;
+  --good: #34d399;
 }
 
 * {
@@ -23,6 +39,24 @@ body {
   font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+body.is-refreshing .panel {
+  transition: opacity 0.2s ease;
+}
+
+body.is-refreshing #friendly-status::after {
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+  content: "";
+  display: inline-block;
+  height: 0.8em;
+  margin-left: 8px;
+  width: 48px;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { background: transparent; }
+  50% { background: var(--line); }
+}
+
 button,
 input,
 select {
@@ -32,7 +66,7 @@ select {
 button {
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--control);
   color: var(--text);
   cursor: pointer;
   min-height: 36px;
@@ -55,7 +89,7 @@ button:hover {
 
 .topbar {
   align-items: center;
-  background: #ffffff;
+  background: var(--panel);
   border-bottom: 1px solid var(--line);
   display: flex;
   gap: 16px;
@@ -64,6 +98,20 @@ button:hover {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+.connection-banner {
+  background: #fff1f0;
+  border-bottom: 1px solid #fecdca;
+  color: var(--bad);
+  font-weight: 650;
+  padding: 9px 22px;
+  text-align: center;
+}
+
+:root[data-theme="dark"] .connection-banner {
+  background: #3b1111;
+  border-color: #7f1d1d;
 }
 
 h1,
@@ -226,8 +274,10 @@ label {
 
 input,
 select {
+  background: var(--control);
   border: 1px solid var(--line);
   border-radius: 6px;
+  color: var(--text);
   min-height: 36px;
   padding: 7px 9px;
   width: 100%;
@@ -293,12 +343,71 @@ summary {
   padding: 13px;
 }
 
+.service-card[draggable="true"] {
+  cursor: grab;
+}
+
+.service-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.service-empty {
+  align-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 180px;
+  padding: 28px;
+  text-align: center;
+}
+
+.service-empty h3 {
+  color: var(--text);
+  margin: 0;
+}
+
 .service-card header {
   align-items: start;
   display: flex;
   gap: 10px;
   justify-content: space-between;
 }
+
+.service-select {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: row;
+  font-size: 13px;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.service-select input {
+  min-height: auto;
+  width: auto;
+}
+
+.health-sparkline {
+  align-items: end;
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-top: 7px;
+}
+
+.health-sparkline span {
+  border-radius: 2px;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.health-sparkline .good { background: var(--good); }
+.health-sparkline .warn { background: var(--warn); }
+.health-sparkline .bad { background: var(--bad); }
 
 .service-card h3 {
   font-size: 16px;
@@ -332,7 +441,9 @@ summary {
   background: var(--panel);
   border-radius: 8px;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  max-height: 90vh;
   max-width: 980px;
+  overflow-y: auto;
   padding: 16px;
   width: 100%;
 }
@@ -430,6 +541,21 @@ summary {
   border-top: 1px solid var(--line);
   margin-top: 14px;
   padding-top: 14px;
+}
+
+.wizard-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.wizard-steps li {
+  color: var(--muted);
+}
+
+.wizard-steps strong {
+  color: var(--text);
 }
 
 .compact {

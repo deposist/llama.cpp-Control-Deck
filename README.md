@@ -26,6 +26,9 @@ Tkinter GUI + Ollama-compatible FastAPI proxy for managing one or many local
 
 - GUI control for local models: start, stop, restart, status, uptime,
   health checks, and logs.
+- Web UX improvements: dark mode, first-run wizard, keyboard-accessible modals,
+  offline indicator, inline validation, batch service actions, drag-and-drop
+  service ordering, undo delete, and health sparklines.
 - Multi-instance mode for chat, embeddings, rerank, multimodal, and router
   profiles, each with its own model, port, and runtime settings.
 - Ollama-compatible proxy for tools that expect the Ollama API.
@@ -436,6 +439,9 @@ Tkinter GUI + Ollama-compatible FastAPI proxy для управления одн
 
 - Управление локальными моделями через GUI: запуск, остановка, рестарт, статус,
   uptime, health-check и логи.
+- Улучшенный Web UX: dark mode, мастер первого запуска, keyboard-accessible
+  модальные окна, индикатор потери связи, inline validation, batch-действия,
+  drag-and-drop порядок сервисов, undo delete и health sparklines.
 - Multi-instance режим: отдельные профили и порты для chat, embeddings, rerank,
   multimodal и router.
 - Ollama-compatible proxy: клиенты, которые ждут Ollama API, могут работать с

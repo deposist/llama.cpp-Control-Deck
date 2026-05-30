@@ -79,6 +79,75 @@ REQUIRED_I18N_KEYS = [
     "duplicate",
     "delete",
     "command_preview",
+    "theme",
+    "offline",
+    "online",
+    "profile",
+    "port",
+    "proxy_port",
+    "target_openai_url",
+    "ollama_url",
+    "runtime",
+    "check_release",
+    "python",
+    "llama_server",
+    "working_dir",
+    "ld_library_path",
+    "context",
+    "gpu_layers",
+    "threads",
+    "extra_args",
+    "latest",
+    "close",
+    "cancel",
+    "validate",
+    "create_and_start",
+    "choose_path",
+    "start_location",
+    "up",
+    "current_path",
+    "open",
+    "select_this_folder",
+    "select",
+    "first_run_setup",
+    "first_run_intro",
+    "detect_runtime_step",
+    "select_model_step",
+    "save_start_step",
+    "choose_model",
+    "continue",
+    "basic",
+    "performance",
+    "network",
+    "name",
+    "alias",
+    "enabled",
+    "model_gguf",
+    "mmproj",
+    "models_dir",
+    "models_preset",
+    "main_gpu",
+    "batch_threads",
+    "batch",
+    "micro_batch",
+    "flash_attention",
+    "split_mode",
+    "tensor_split",
+    "api_key",
+    "openai_url_preview",
+    "router_max_models",
+    "mmap",
+    "mlock",
+    "web_ui",
+    "continuous_batching",
+    "slots",
+    "router_autoload",
+    "start_selected",
+    "stop_selected",
+    "undo_delete",
+    "host",
+    "metrics",
+    "browse",
 ]
 
 I18N: dict[str, dict[str, str]] = {
@@ -111,6 +180,75 @@ I18N: dict[str, dict[str, str]] = {
         "duplicate": "Дублировать",
         "delete": "Удалить",
         "command_preview": "Команда запуска",
+        "theme": "Тема",
+        "offline": "Связь с панелью потеряна. Повторяем подключение...",
+        "online": "Связь восстановлена.",
+        "profile": "Профиль",
+        "port": "Порт",
+        "proxy_port": "Порт proxy",
+        "target_openai_url": "Целевой OpenAI URL",
+        "ollama_url": "Ollama URL",
+        "runtime": "Окружение",
+        "check_release": "Проверить release",
+        "python": "Python",
+        "llama_server": "llama-server",
+        "working_dir": "Рабочая папка",
+        "ld_library_path": "LD library path",
+        "context": "Контекст",
+        "gpu_layers": "GPU слои",
+        "threads": "Потоки",
+        "extra_args": "Доп. аргументы",
+        "latest": "Последние",
+        "close": "Закрыть",
+        "cancel": "Отмена",
+        "validate": "Проверить",
+        "create_and_start": "Создать и запустить",
+        "choose_path": "Выбрать путь",
+        "start_location": "Старт",
+        "up": "Вверх",
+        "current_path": "Текущий путь",
+        "open": "Открыть",
+        "select_this_folder": "Выбрать эту папку",
+        "select": "Выбрать",
+        "first_run_setup": "Первый запуск",
+        "first_run_intro": "Выполните эти шаги, чтобы запустить первую локальную модель.",
+        "detect_runtime_step": "Найти Python, llama-server, рабочую папку и библиотеки.",
+        "select_model_step": "Выбрать локальный файл модели .gguf.",
+        "save_start_step": "Сохранить настройки и запустить OpenAI-compatible endpoint.",
+        "choose_model": "Выбрать модель",
+        "continue": "Продолжить",
+        "basic": "Основное",
+        "performance": "Производительность",
+        "network": "Сеть",
+        "name": "Название",
+        "alias": "Alias",
+        "enabled": "Включено",
+        "model_gguf": "Модель .gguf",
+        "mmproj": "MMProj",
+        "models_dir": "Папка моделей",
+        "models_preset": "Preset моделей",
+        "main_gpu": "Основная GPU",
+        "batch_threads": "Потоки batch",
+        "batch": "Batch",
+        "micro_batch": "Micro-batch",
+        "flash_attention": "Flash attention",
+        "split_mode": "Split mode",
+        "tensor_split": "Tensor split",
+        "api_key": "API key",
+        "openai_url_preview": "Предпросмотр OpenAI URL",
+        "router_max_models": "Макс. моделей router",
+        "mmap": "mmap",
+        "mlock": "mlock",
+        "web_ui": "web UI",
+        "continuous_batching": "continuous batching",
+        "slots": "slots",
+        "router_autoload": "router autoload",
+        "start_selected": "Запустить выбранные",
+        "stop_selected": "Остановить выбранные",
+        "undo_delete": "Отменить удаление",
+        "host": "Host",
+        "metrics": "metrics",
+        "browse": "Выбрать",
     },
     "en": {
         "app_title": "llama.cpp Control Deck",
@@ -141,6 +279,75 @@ I18N: dict[str, dict[str, str]] = {
         "duplicate": "Duplicate",
         "delete": "Delete",
         "command_preview": "Command preview",
+        "theme": "Theme",
+        "offline": "Connection to the control panel was lost. Retrying...",
+        "online": "Connection restored.",
+        "profile": "Profile",
+        "port": "Port",
+        "proxy_port": "Proxy port",
+        "target_openai_url": "Target OpenAI URL",
+        "ollama_url": "Ollama URL",
+        "runtime": "Runtime",
+        "check_release": "Check release",
+        "python": "Python",
+        "llama_server": "llama-server",
+        "working_dir": "Working dir",
+        "ld_library_path": "LD library path",
+        "context": "Context",
+        "gpu_layers": "GPU layers",
+        "threads": "Threads",
+        "extra_args": "Extra args",
+        "latest": "Latest",
+        "close": "Close",
+        "cancel": "Cancel",
+        "validate": "Validate",
+        "create_and_start": "Create and start",
+        "choose_path": "Choose path",
+        "start_location": "Start",
+        "up": "Up",
+        "current_path": "Current path",
+        "open": "Open",
+        "select_this_folder": "Select this folder",
+        "select": "Select",
+        "first_run_setup": "First run setup",
+        "first_run_intro": "Follow these steps to start your first local model.",
+        "detect_runtime_step": "Find Python, llama-server, working directory, and libraries.",
+        "select_model_step": "Choose a local .gguf model file.",
+        "save_start_step": "Save settings and launch the OpenAI-compatible endpoint.",
+        "choose_model": "Choose model",
+        "continue": "Continue",
+        "basic": "Basic",
+        "performance": "Performance",
+        "network": "Network",
+        "name": "Name",
+        "alias": "Alias",
+        "enabled": "Enabled",
+        "model_gguf": "Model .gguf",
+        "mmproj": "MMProj",
+        "models_dir": "Models dir",
+        "models_preset": "Models preset",
+        "main_gpu": "Main GPU",
+        "batch_threads": "Batch threads",
+        "batch": "Batch",
+        "micro_batch": "Micro-batch",
+        "flash_attention": "Flash attention",
+        "split_mode": "Split mode",
+        "tensor_split": "Tensor split",
+        "api_key": "API key",
+        "openai_url_preview": "OpenAI URL preview",
+        "router_max_models": "Router max models",
+        "mmap": "mmap",
+        "mlock": "mlock",
+        "web_ui": "web UI",
+        "continuous_batching": "continuous batching",
+        "slots": "slots",
+        "router_autoload": "router autoload",
+        "start_selected": "Start selected",
+        "stop_selected": "Stop selected",
+        "undo_delete": "Undo delete",
+        "host": "Host",
+        "metrics": "metrics",
+        "browse": "Browse",
     },
 }
 
@@ -233,9 +440,19 @@ class InstancePayload(BaseModel):
     start: bool = False
 
 
+class InstanceReorderPayload(BaseModel):
+    ids: list[str]
+
+
 class PathValidatePayload(BaseModel):
     path: str
     kind: str
+
+
+class ClientErrorPayload(BaseModel):
+    message: str
+    source: str | None = "web"
+    stack: str | None = ""
 
 
 class _ProgressWriter:
@@ -1036,6 +1253,19 @@ def create_app() -> FastAPI:
     def api_state() -> dict[str, Any]:
         return build_state()
 
+    @app.post("/api/client-error")
+    def api_client_error(payload: ClientErrorPayload) -> dict[str, Any]:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "time": time.time(),
+            "source": str(payload.source or "web")[:80],
+            "message": str(payload.message or "")[:1000],
+            "stack": str(payload.stack or "")[:4000],
+        }
+        with (LOG_DIR / "web-client-errors.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        return {"ok": True, "message": "Client error recorded."}
+
     @app.post("/api/config")
     def api_save_config(patch: ConfigPatch) -> dict[str, Any]:
         config = _merge_config_patch(load_config(), patch)
@@ -1082,6 +1312,23 @@ def create_app() -> FastAPI:
         config = load_config()
         details = [_service_details(config, instance) for instance in config.get("instances") or []]
         return {"ok": True, "message": "Services loaded.", "details": details}
+
+    @app.post("/api/instances/reorder")
+    def api_instances_reorder(payload: InstanceReorderPayload) -> dict[str, Any]:
+        config = load_config()
+        instances = config.get("instances") or []
+        by_id = {_instance_id(instance): instance for instance in instances}
+        requested = list(payload.ids or [])
+        if set(requested) != set(by_id):
+            return {
+                "ok": False,
+                "message": "Service order was not saved.",
+                "details": {"expected": sorted(by_id), "received": requested},
+                "next_action": "Refresh the page and try reordering again.",
+            }
+        config["instances"] = [by_id[item_id] for item_id in requested]
+        save_config(config)
+        return {"ok": True, "message": "Service order saved.", "details": build_state()}
 
     @app.get("/api/instances/defaults")
     def api_instance_defaults(profile: str = "chat") -> dict[str, Any]:

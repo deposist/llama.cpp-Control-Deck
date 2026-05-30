@@ -1,71 +1,67 @@
-# Release Notes — llama.cpp Control Deck v1.0.2
+# Release Notes — llama.cpp Control Deck v1.0.3
 
 **Release date:** 2026-05-30
 
 ## Highlights
 
-This is a maintenance and reliability release. It fixes performance bottlenecks
-in the FastAPI web UI, removes a dead background thread from the Tkinter GUI,
-and addresses a DOM-based XSS vector in the browser frontend.
+v1.0.3 is a UX-focused release. It significantly improves the browser control
+panel with accessibility, onboarding, dark mode, batch operations, drag-and-drop
+service ordering, inline validation, offline feedback, and broader RU/EN i18n.
 
-## Bug Fixes
+This release does **not** include developer-only roadmap or CI audit files in the
+published repository state.
 
-- **Event-loop blocking in web UI** — `tail_file()` and template `read_text()`
-  previously ran synchronously inside async FastAPI endpoints. Under heavy log
-  files this froze the entire uvicorn worker for all connected clients.
-  Both calls now execute in a `run_in_threadpool` wrapper.
+## Major UX Improvements
 
-- **Dead HealthCheckWorker thread (Tkinter)** — `refresh_status()` spawned a
-  `HealthCheckWorker` on every 3-second tick. The worker pushed results into a
-  `queue.Queue`, but the consumer only contained `pass`. Over time the queue
-  leaked memory and wasted CPU. The worker and all related code have been
-  removed.
+- **Dark mode** with persisted preference and system `prefers-color-scheme`
+  fallback.
+- **First-run wizard** when runtime or model configuration is missing.
+- **Empty Services state** with a clear **Add service** call to action.
+- **Keyboard-accessible modals**: `Escape` closes dialogs, focus is trapped
+  inside active modals, and the first useful field receives focus on open.
+- **ARIA live announcements** for toast/status messages.
+- **Offline indicator** when `/api/state` polling fails.
+- **Responsive modals** with `max-height: 90vh` and internal scrolling.
 
-- **XSS via `innerHTML` in web UI** — `renderInstances()` used template
-  literals to inject `item.name`, `item.id`, and `item.profile` directly into
-  the DOM. Because these strings originate from `config.json`, a malicious or
-  accidentally corrupted config could execute arbitrary JavaScript. The
-  function now builds every node via `document.createElement` and
-  `textContent`.
+## Service Management
 
-- **Request flooding on slow networks** — `setInterval(refresh, 2500)` did not
-  guard against overlapping requests. If the server took longer than 2.5 s to
-  respond, requests stacked up indefinitely, causing browser memory growth and
-  race conditions on shared `state.data`. A `_refreshPending` guard now
-  skips the next tick until the current one finishes.
+- Batch **Start selected** / **Stop selected** actions.
+- Checkbox selection for services.
+- Drag-and-drop service reordering saved through `POST /api/instances/reorder`.
+- **Undo delete** via button or `Ctrl+Z` / `Cmd+Z`.
+- Health sparklines showing the last 10 health states per service.
+- Inline service validation with debounce and live command preview updates.
 
-- **Accessibility contrast failure** — `.warning` text colour `#9a6700` on
-  `#fff8db` produced ~3.5:1 contrast, below the WCAG AA threshold of 4.5:1.
-  Changed to `#6e5000` (5.96:1).
+## Performance & Reliability
 
-- **Hardcoded `lang="ru"`** — the HTML root element defaulted to Russian even
-  before JavaScript i18n initialisation, causing screen readers to announce the
-  page with the wrong voice. Default is now `lang="en"`; the JS language
-  switcher updates it dynamically as before.
+- Adaptive refresh polling (`setTimeout`) replaces fixed `setInterval`.
+- Tkinter logs refresh only when the Logs tab is active.
+- Tkinter instance table updates rows in place instead of recreating the entire
+  Treeview.
+- `load_config()` uses an mtime-based cache with defensive `deepcopy()`.
+- Local browser error telemetry is stored in `logs/web-client-errors.jsonl` via
+  `POST /api/client-error`.
 
-## Documentation Updates
+## Internationalization & Accessibility
 
-- README now documents the web control panel (`./start_web.sh`) in the Russian
-  section, matching the existing English documentation.
-- Troubleshooting tables in both languages include entries for the fixed web UI
-  freeze and contrast issues.
-- `CHANGELOG.md` and `pyproject.toml` bumped to `1.0.2`.
+- Broader RU/EN coverage for old hardcoded labels and new UX controls.
+- Path picker file sizes now display as human-readable IEC units.
+- Text inputs use `dir="auto"` for mixed LTR/RTL text.
 
 ## Upgrade Notes
 
 No breaking changes. Existing `config.json` files remain compatible.
 
-- Web UI users will see smoother refreshes and no more browser tab memory growth.
-- Tkinter GUI users will notice slightly lower background CPU usage.
-- If you edited `config.json` by hand and included HTML/JS characters in
-  instance names, they are now rendered as plain text instead of being parsed.
+If you use the Web UI, refresh the page after upgrading to load the new CSS and
+JavaScript assets.
 
 ## Files Changed
 
+- `config.py`
 - `control_web.py`
 - `llama_cpp_gui.py`
-- `static/control.js`
 - `static/control.css`
+- `static/control.js`
 - `templates/index.html`
 - `CHANGELOG.md`
 - `README.md`

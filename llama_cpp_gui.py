@@ -32,7 +32,7 @@ from config import (
     save_config,
 )
 from llama_cpp_release import BACKEND_CHOICES, read_manifest
-from llama_server_manager import HealthCheckWorker, LlamaServerManager, format_uptime, tail_file
+from llama_server_manager import LlamaServerManager, format_uptime, tail_file
 
 logger = logging.getLogger("llama_cpp_gui")
 
@@ -270,8 +270,6 @@ class LlamaCppGUI:
         self._refreshing_instances_table = False
         self._active_scroll_canvas: tk.Canvas | None = None
         self._mousewheel_bound = False
-        self._health_queue: queue.Queue | None = None
-        self._health_worker: HealthCheckWorker | None = None
 
         self._build_ui()
         self._load_runtime_vars()
@@ -1725,13 +1723,6 @@ class LlamaCppGUI:
                 pass
             self._refresh_job = None
 
-        # Start health worker if not running
-        if self._health_queue is None:
-            self._health_queue = queue.Queue()
-            self._health_worker = HealthCheckWorker(self.manager, self._health_queue)
-            self._health_worker.start()
-            self._process_health_results()
-
         server = self.manager.server_status()
         proxy = self.manager.proxy_status()
         owner = None
@@ -1764,31 +1755,8 @@ class LlamaCppGUI:
         self.refresh_logs()
         self._refresh_job = self.root.after(3000, self.refresh_status)
 
-    def _process_health_results(self) -> None:
-        """Process health check results from the background worker."""
-        if self._health_queue is None:
-            return
-        try:
-            while True:
-                item = self._health_queue.get_nowait()
-                item_type, data = item
-                if item_type in ("instance_result", "server_result"):
-                    # Update status based on result
-                    pass
-                elif item_type == "error":
-                    logger.error(f"Health check error: {data}")
-                self._health_queue.task_done()
-        except queue.Empty:
-            pass
-        # Schedule next check
-        self.root.after(100, self._process_health_results)
-
     def on_close(self) -> None:
         """Handle window close event with graceful shutdown dialog."""
-        if self._health_worker is not None:
-            self._health_worker.stop()
-            self._health_worker = None
-
         # Check if any processes are running
         server_status = self.manager.server_status()
         proxy_status = self.manager.proxy_status()

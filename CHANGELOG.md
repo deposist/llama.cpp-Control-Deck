@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-05-30
+
+### Fixed
+- **Web UI performance**: synchronous file I/O (`read_text`, `tail_file`) in FastAPI
+  endpoints now runs in a threadpool to prevent blocking the async event loop.
+- **Tkinter reliability**: removed the unused `HealthCheckWorker` background thread
+  that started on every `refresh_status()` tick, leaked queue memory, and never
+  processed results.
+- **Web UI XSS safety**: `renderInstances` rewritten to use DOM API
+  (`createElement` + `textContent`) instead of `innerHTML` with unsanitised
+  `config.json` strings.
+- **Web UI request flooding**: `refresh()` now drops overlapping poll requests
+  instead of queueing unlimited concurrent `/api/state` calls.
+- **Accessibility contrast**: `.warning` text colour changed from `#9a6700` to
+  `#6e5000` to meet WCAG AA (5.96:1).
+- **HTML `lang` attribute**: default changed from hardcoded `ru` to `en`; the
+  JavaScript i18n system still switches it dynamically based on user selection.
+
+### Changed
+- README now documents the web control panel in the Russian section and adds
+  security/troubleshooting notes for both languages.
+
 ## [1.0.1] - 2026-05-28
 
 ### Added

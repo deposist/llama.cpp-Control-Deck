@@ -249,7 +249,7 @@ select:focus {
   background: #fff8db;
   border: 1px solid #fedf89;
   border-radius: 6px;
-  color: var(--warn);
+  color: #6e5000;
   padding: 9px 10px;
 }
 

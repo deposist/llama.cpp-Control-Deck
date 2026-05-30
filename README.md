@@ -401,6 +401,8 @@ Tensor split: 3,1
 | `CUDA error: out of memory` | not enough VRAM | reduce Context, Batch, or GPU layers |
 | proxy returns 502 | target `llama-server` is not running | start the server first |
 | GUI startup is slow | `--list-devices` takes time | `./start_gui.sh --skip-device-refresh` |
+| Web UI freezes during refresh | overlapping parallel `refresh` requests queue up | fixed in v1.0.2 — overlapping polls are now dropped |
+| Warning text unreadable in web UI | low colour contrast | fixed in v1.0.2 — colours now meet WCAG AA |
 
 ### Security
 
@@ -543,7 +545,42 @@ cmake --build build-cuda --config Release -j"$(nproc)"
 llama.cpp/build-cuda/bin/llama-server
 ```
 
-### Запуск GUI
+### Запуск Web UI
+
+Рекомендуемый способ управления — локальная веб-панель:
+
+```bash
+./start_web.sh
+```
+
+Затем откройте в браузере:
+
+```text
+http://127.0.0.1:8765
+```
+
+Веб-интерфейс сохраняет всю существующую логику менеджера и proxy, добавляя
+начальный launch flow, переключение языка RU/EN, валидацию, логи, диагностику
+GPU, управление release и расширенные настройки. Используются FastAPI,
+server-rendered HTML, CSS и vanilla JavaScript; Electron, Node.js, React, Vue и
+Svelte не требуются.
+
+Поля путей в веб-интерфейсе имеют кнопки **Browse**, которые открывают
+серверный файловый picker для Python, `llama-server`, рабочих директорий,
+`LD_LIBRARY_PATH`, `.gguf` моделей, MMProj, директорий моделей и preset-файлов.
+Picker выбирает пути на машине, где запущен `control_web.py`; файлы через браузер
+не загружаются и не копируются.
+
+Раздел **Runtime & updates** служит для проверки и скачивания `llama-server`
+release. Загрузки выполняются в фоне, а страница показывает текущий статус и
+последние строки прогресса, чтобы браузер не выглядел зависшим во время
+загрузки больших архивов.
+
+Раздел **Services** управляет multi-instance серверами из браузера: добавление,
+редактирование, валидация, дублирование, удаление, запуск, остановка и рестарт,
+с сохранением совместимости формата `config.json` с legacy Tkinter GUI и CLI.
+
+### Запуск GUI (legacy)
 
 ```bash
 ./start_gui.sh
@@ -775,6 +812,8 @@ Tensor split: 3,1
 | `CUDA error: out of memory` | не хватает VRAM | уменьшить Context, Batch или GPU layers |
 | Proxy возвращает 502 | целевой `llama-server` не запущен | сначала запустить сервер |
 | GUI долго стартует | `--list-devices` занимает время | `./start_gui.sh --skip-device-refresh` |
+| Веб-интерфейс зависает при обновлении | накопление параллельных запросов `refresh` | обновлено в v1.0.2 — теперь overlapping polls отбрасываются |
+| Предупреждения в веб-интерфейсе нечитаемы | низкий контраст цветов | обновлено в v1.0.2 — цвета соответствуют WCAG AA |
 
 ### Безопасность
 

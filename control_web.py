@@ -21,6 +21,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 import llama_cpp_release
 from config import (
@@ -1026,8 +1027,8 @@ def create_app() -> FastAPI:
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/", response_class=HTMLResponse)
-    def index() -> HTMLResponse:
-        template = INDEX_TEMPLATE.read_text(encoding="utf-8")
+    async def index() -> HTMLResponse:
+        template = await run_in_threadpool(INDEX_TEMPLATE.read_text, encoding="utf-8")
         state_json = json.dumps(build_state(), ensure_ascii=False)
         return HTMLResponse(template.replace(STATE_PLACEHOLDER, state_json))
 
@@ -1256,9 +1257,10 @@ def create_app() -> FastAPI:
         return _result_payload(_manager().stop_proxy())
 
     @app.get("/api/logs")
-    def api_logs(kind: str = "latest", lines: int = Query(200, ge=1, le=2000)) -> dict[str, Any]:
-        log_path = _select_log_path(kind)
-        return {"ok": True, "path": str(log_path) if log_path else "", "text": tail_file(log_path, lines)}
+    async def api_logs(kind: str = "latest", lines: int = Query(200, ge=1, le=2000)) -> dict[str, Any]:
+        log_path = await run_in_threadpool(_select_log_path, kind)
+        text = await run_in_threadpool(tail_file, log_path, lines)
+        return {"ok": True, "path": str(log_path) if log_path else "", "text": text}
 
     @app.get("/api/devices")
     def api_devices() -> dict[str, Any]:

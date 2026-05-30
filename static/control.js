@@ -169,29 +169,67 @@ function renderInstances() {
   (state.data.instances || []).forEach((item) => {
     const card = document.createElement("article");
     card.className = "service-card";
-    card.innerHTML = `
-      <header>
-        <div>
-          <h3>${item.name || item.id}</h3>
-          <div class="muted">${item.profile || ""} · ${modelBasename(item)}</div>
-        </div>
-        <span class="chip ${item.running && item.healthy ? "good" : item.running ? "" : "bad"}">${serviceStatusLabel(item)}</span>
-      </header>
-      <div class="service-meta">
-        <div>Port: ${item.port || ""}</div>
-        <div>Alias: ${item.alias || ""}</div>
-        <label><span>OpenAI URL</span><input id="url-${item.id}" value="${item.openai_url || ""}" readonly /></label>
-      </div>
-      <div class="actions compact">
-        <button data-instance="${item.id}" data-instance-action="start">${t("start")}</button>
-        <button data-instance="${item.id}" data-instance-action="stop">${t("stop")}</button>
-        <button data-instance="${item.id}" data-instance-action="restart">${t("restart")}</button>
-        <button data-service-edit="${item.id}" data-i18n="edit">${t("edit")}</button>
-        <button data-service-duplicate="${item.id}" data-i18n="duplicate">${t("duplicate")}</button>
-        <button data-service-delete="${item.id}" data-i18n="delete">${t("delete")}</button>
-        <button data-copy="url-${item.id}" data-i18n="copy">${t("copy")}</button>
-      </div>
-    `;
+
+    const header = document.createElement("header");
+    const titleDiv = document.createElement("div");
+    const h3 = document.createElement("h3");
+    h3.textContent = item.name || item.id;
+    const muted = document.createElement("div");
+    muted.className = "muted";
+    muted.textContent = (item.profile || "") + " \u00b7 " + modelBasename(item);
+    titleDiv.appendChild(h3);
+    titleDiv.appendChild(muted);
+
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    if (item.running && item.healthy) chip.classList.add("good");
+    else if (!item.running) chip.classList.add("bad");
+    chip.textContent = serviceStatusLabel(item);
+
+    header.appendChild(titleDiv);
+    header.appendChild(chip);
+
+    const meta = document.createElement("div");
+    meta.className = "service-meta";
+    const portDiv = document.createElement("div");
+    portDiv.textContent = "Port: " + (item.port || "");
+    const aliasDiv = document.createElement("div");
+    aliasDiv.textContent = "Alias: " + (item.alias || "");
+    const urlLabel = document.createElement("label");
+    const urlSpan = document.createElement("span");
+    urlSpan.textContent = "OpenAI URL";
+    const urlInput = document.createElement("input");
+    urlInput.id = "url-" + item.id;
+    urlInput.value = item.openai_url || "";
+    urlInput.readOnly = true;
+    urlLabel.appendChild(urlSpan);
+    urlLabel.appendChild(urlInput);
+
+    meta.appendChild(portDiv);
+    meta.appendChild(aliasDiv);
+    meta.appendChild(urlLabel);
+
+    const actions = document.createElement("div");
+    actions.className = "actions compact";
+
+    const makeBtn = (text, attrs) => {
+      const btn = document.createElement("button");
+      btn.textContent = text;
+      Object.entries(attrs).forEach(([k, v]) => btn.setAttribute(k, v));
+      return btn;
+    };
+
+    actions.appendChild(makeBtn(t("start"), { "data-instance": item.id, "data-instance-action": "start" }));
+    actions.appendChild(makeBtn(t("stop"), { "data-instance": item.id, "data-instance-action": "stop" }));
+    actions.appendChild(makeBtn(t("restart"), { "data-instance": item.id, "data-instance-action": "restart" }));
+    actions.appendChild(makeBtn(t("edit"), { "data-service-edit": item.id, "data-i18n": "edit" }));
+    actions.appendChild(makeBtn(t("duplicate"), { "data-service-duplicate": item.id, "data-i18n": "duplicate" }));
+    actions.appendChild(makeBtn(t("delete"), { "data-service-delete": item.id, "data-i18n": "delete" }));
+    actions.appendChild(makeBtn(t("copy"), { "data-copy": "url-" + item.id, "data-i18n": "copy" }));
+
+    card.appendChild(header);
+    card.appendChild(meta);
+    card.appendChild(actions);
     body.appendChild(card);
   });
 }
@@ -430,9 +468,18 @@ function configPatch() {
   };
 }
 
+let _refreshPending = false;
 async function refresh() {
-  state.data = await api("/api/state");
-  render();
+  if (_refreshPending) return;
+  _refreshPending = true;
+  try {
+    state.data = await api("/api/state");
+    render();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    _refreshPending = false;
+  }
 }
 
 async function saveConfig(showToast = true) {

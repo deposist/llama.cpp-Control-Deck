@@ -2,7 +2,7 @@
 # Install: pip install -r requirements.txt
 
 # Process management and system monitoring
-psutil>=6.0.0,<7.0.0
+psutil>=6.0.0,<8.0.0
 
 # Ollama-compatible proxy (FastAPI + async HTTP)
 fastapi>=0.115.0,<1.0.0

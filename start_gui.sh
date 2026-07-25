@@ -5,6 +5,37 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SETUP=0
 GUI_ARGS=()
 
+python_is_usable() {
+  local candidate="$1"
+  [[ -n "$candidate" && -x "$candidate" ]] &&
+    "$candidate" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' >/dev/null 2>&1
+}
+
+find_system_python() {
+  local command_name candidate
+  for command_name in python3 python py; do
+    if command -v "$command_name" >/dev/null 2>&1; then
+      candidate="$(command -v "$command_name")"
+      if python_is_usable "$candidate"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+find_venv_python() {
+  local candidate
+  for candidate in "$SCRIPT_DIR/.venv/bin/python" "$SCRIPT_DIR/.venv/Scripts/python.exe"; do
+    if python_is_usable "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 usage() {
   cat <<'EOF'
 Usage: start_gui.sh [--setup] [GUI options]
@@ -17,7 +48,7 @@ Beginner path:
 Environment variables:
   LLAMA_CPP_PYTHON       Path to Python interpreter (overrides default)
   LLAMA_CPP_BOOTSTRAP_PYTHON
-                          Python used for --setup (default: python3 in PATH)
+                          Python used for --setup (default: first working Python in PATH)
   LLAMA_CPP_BINARY       Path to llama-server binary
   LLAMA_CPP_CWD          Working directory for llama-server
   LLAMA_CPP_LIB_DIR      Directory with llama.cpp shared libraries
@@ -52,15 +83,10 @@ done
 if [[ "$SETUP" -eq 1 ]]; then
   BOOTSTRAP_PYTHON="${LLAMA_CPP_BOOTSTRAP_PYTHON:-}"
   if [[ -z "$BOOTSTRAP_PYTHON" ]]; then
-    if command -v python3 >/dev/null 2>&1; then
-      BOOTSTRAP_PYTHON="$(command -v python3)"
-    else
-      echo "python3 not found. Install python3 first." >&2
-      exit 1
-    fi
+    BOOTSTRAP_PYTHON="$(find_system_python || true)"
   fi
-  if [[ ! -x "$BOOTSTRAP_PYTHON" ]]; then
-    echo "Bootstrap Python is not executable: $BOOTSTRAP_PYTHON" >&2
+  if ! python_is_usable "$BOOTSTRAP_PYTHON"; then
+    echo "Python 3.10+ not found. Set LLAMA_CPP_BOOTSTRAP_PYTHON to a working interpreter." >&2
     exit 1
   fi
   echo "Creating/updating local virtual environment: $SCRIPT_DIR/.venv"
@@ -73,27 +99,30 @@ Could not create .venv. Install the venv package and retry:
 EOF
     exit 1
   fi
-  PYTHON="$SCRIPT_DIR/.venv/bin/python"
+  PYTHON="$(find_venv_python || true)"
+  if [[ -z "$PYTHON" ]]; then
+    echo "Virtual environment Python was not created in $SCRIPT_DIR/.venv." >&2
+    exit 1
+  fi
   "$PYTHON" -m pip install -r "$SCRIPT_DIR/requirements.txt"
   export LLAMA_CPP_PYTHON="$PYTHON"
 else
   # Python runtime resolution priority:
   #   1. LLAMA_CPP_PYTHON environment variable
-  #   2. ./.venv/bin/python (local virtual environment)
-  #   3. python3 in PATH
+  #   2. local .venv (POSIX or Windows layout)
+  #   3. first working python3, python, or py command in PATH
   PYTHON="${LLAMA_CPP_PYTHON:-}"
 
   if [[ -z "$PYTHON" ]]; then
-    if [[ -x "$SCRIPT_DIR/.venv/bin/python" ]]; then
-      PYTHON="$SCRIPT_DIR/.venv/bin/python"
-    elif command -v python3 >/dev/null 2>&1; then
-      PYTHON="$(command -v python3)"
-    fi
+    PYTHON="$(find_venv_python || true)"
+  fi
+  if [[ -z "$PYTHON" ]]; then
+    PYTHON="$(find_system_python || true)"
   fi
 fi
 
-if [[ -z "$PYTHON" || ! -x "$PYTHON" ]]; then
-  echo "Python runtime not found. Set LLAMA_CPP_PYTHON or install python3." >&2
+if ! python_is_usable "$PYTHON"; then
+  echo "Python 3.10+ runtime not found. Set LLAMA_CPP_PYTHON to a working interpreter." >&2
   exit 1
 fi
 

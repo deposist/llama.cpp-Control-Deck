@@ -9,7 +9,9 @@ fastapi>=0.115.0,<1.0.0
 uvicorn[standard]>=0.34.0,<1.0.0
 httpx>=0.28.0,<1.0.0
 
-# Note: tkinter is a stdlib module but requires the system package:
+# Note: tkinter is only needed for the desktop GUI (start_gui.sh).
+# The web panel (start_web.sh) runs without it.
+# tkinter ships with the stdlib but requires a system package:
 #   Ubuntu/Debian: sudo apt install python3-tk
 #   Fedora:        sudo dnf install python3-tkinter
 #   Arch:          sudo pacman -S tk

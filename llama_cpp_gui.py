@@ -27,6 +27,8 @@ from config import (
     detect_runtime_paths,
     get_profile,
     load_config,
+    primary_instance,
+    primary_instance_id,
     profile_display_name,
     runtime_value_is_usable,
     save_config,
@@ -122,11 +124,14 @@ HOUSEHOLD_HELP_TEXT = """КАК ПОЛЬЗОВАТЬСЯ ПРОГРАММОЙ Б
 1. Что делает программа
 
 Эта программа включает и выключает локальные нейросети llama.cpp.
-Модель - это файл .gguf. Сервер - это процесс, который дает другим программам доступ к модели.
+Модель - это файл .gguf. Сервис - это процесс, который дает другим программам доступ к модели.
+
+Всё запускается в одном месте: на вкладке Services. Одна строка - один сервис.
+Отдельного "одиночного режима" больше нет.
 
 2. Самый простой запуск
 
-- Откройте вкладку Instances.
+- Откройте вкладку Services (она первая).
 - Выберите строку Chat 8081.
 - Проверьте поле Model .gguf.
 - Нажмите Apply to selected.
@@ -163,18 +168,33 @@ HOUSEHOLD_HELP_TEXT = """КАК ПОЛЬЗОВАТЬСЯ ПРОГРАММОЙ Б
 
 Не ставьте одинаковый порт двум строкам. Это как пытаться посадить двух людей на один стул.
 
-6. Что нажимать
+6. Что нажимать на вкладке Services
 
-- Add: добавить новую строку.
-- Duplicate: скопировать выбранную строку.
-- Apply to selected: сохранить изменения в выбранной строке.
+Верхний ряд - включение и выключение:
 - Start selected: включить выбранную строку.
 - Stop selected: выключить выбранную строку.
+- Restart selected: перезапустить выбранную строку.
 - Start enabled: включить все строки с галочкой Enabled.
 - Stop all: выключить все строки.
+
+Нижний ряд - управление списком:
+- Add: добавить новую строку.
+- Duplicate: скопировать выбранную строку.
+- Remove: удалить выбранную строку.
+- Make primary: сделать строку главной (столбец Primary покажет yes).
+- Open web UI: открыть браузер на выбранном сервисе.
+- Copy URL: скопировать адрес для Open WebUI.
 - Use for proxy: сделать выбранную строку целью для Ollama-compatible proxy.
 
-7. Если что-то не работает
+7. Что такое главный сервис (Primary)
+
+Кнопки внизу окна - Start primary, Restart primary, Open primary, Copy OpenAI URL -
+работают с главным сервисом. Это удобно, когда обычно нужна одна модель.
+Главный сервис отмечен yes в столбце Primary. Сменить его: Make primary.
+
+Кнопка Stop all внизу окна гасит все сервисы и proxy.
+
+8. Если что-то не работает
 
 - Откройте вкладку Logs.
 - Нажмите Refresh logs.
@@ -187,10 +207,11 @@ HOUSEHOLD_HELP_TEXT = """КАК ПОЛЬЗОВАТЬСЯ ПРОГРАММОЙ Б
 - для большой модели слишком большой Context;
 - забыли нажать Apply to selected перед Start selected.
 
-8. Главное правило
+9. Главное правило
 
-Для нескольких моделей работайте во вкладке Instances.
-Вкладка Server нужна только для одиночного запуска и шаблонов.
+Всё включается на вкладке Services.
+Вкладка Runtime and defaults - это только пути к программам и значения
+по умолчанию для новых сервисов. Оттуда ничего не запускается.
 """
 
 
@@ -291,8 +312,8 @@ class LlamaCppGUI:
         self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        server_tab = self._create_scrollable_tab(notebook, "Server")
-        instances_tab = self._create_scrollable_tab(notebook, "Instances")
+        instances_tab = self._create_scrollable_tab(notebook, "Services")
+        server_tab = self._create_scrollable_tab(notebook, "Runtime and defaults")
         proxy_tab = self._create_scrollable_tab(notebook, "Ollama proxy")
         devices_tab = ttk.Frame(notebook, padding=10)
         logs_tab = ttk.Frame(notebook, padding=10)
@@ -389,10 +410,21 @@ class LlamaCppGUI:
     def _build_server_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=1)
-        parent.rowconfigure(2, weight=1)
+        parent.rowconfigure(3, weight=1)
+
+        ttk.Label(
+            parent,
+            text=(
+                "Здесь только пути к бинарникам и значения по умолчанию для новых сервисов. "
+                "Запуск и остановка — на вкладке Services."
+            ),
+            foreground="#555",
+            wraplength=900,
+            justify="left",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
         runtime = ttk.LabelFrame(parent, text="Runtime", padding=10)
-        runtime.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        runtime.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         runtime.columnconfigure(1, weight=1)
         self.runtime_vars["python_path"] = tk.StringVar()
         self.runtime_vars["llama_server_binary"] = tk.StringVar()
@@ -432,8 +464,8 @@ class LlamaCppGUI:
             side=tk.LEFT, padx=6
         )
 
-        selector = ttk.LabelFrame(parent, text="Profile", padding=10)
-        selector.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        selector = ttk.LabelFrame(parent, text="Defaults profile", padding=10)
+        selector.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         selector.columnconfigure(1, weight=1)
         self.active_profile_var = tk.StringVar(value=self.current_profile)
         ttk.Label(selector, text="Active profile").grid(row=0, column=0, sticky="w", padx=(0, 8))
@@ -451,12 +483,12 @@ class LlamaCppGUI:
             row=0, column=2, sticky="w", padx=16
         )
 
-        left = ttk.LabelFrame(parent, text="Model and endpoint", padding=10)
-        left.grid(row=2, column=0, sticky="nsew", padx=(0, 4))
+        left = ttk.LabelFrame(parent, text="Model and endpoint defaults", padding=10)
+        left.grid(row=3, column=0, sticky="nsew", padx=(0, 4))
         left.columnconfigure(1, weight=1)
 
-        right = ttk.LabelFrame(parent, text="Runtime parameters", padding=10)
-        right.grid(row=2, column=1, sticky="nsew", padx=(4, 0))
+        right = ttk.LabelFrame(parent, text="Runtime parameter defaults", padding=10)
+        right.grid(row=3, column=1, sticky="nsew", padx=(4, 0))
         right.columnconfigure(1, weight=1)
 
         for key in [
@@ -527,11 +559,20 @@ class LlamaCppGUI:
     def _build_instances_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
 
-        top = ttk.LabelFrame(parent, text="Running instances", padding=10)
+        top = ttk.LabelFrame(parent, text="Services", padding=10)
         top.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
         top.columnconfigure(0, weight=1)
 
+        ttk.Label(
+            top,
+            text="Всё запускается здесь. Каждая строка — отдельный llama-server со своим портом и моделью.",
+            foreground="#555",
+            wraplength=900,
+            justify="left",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
         columns = (
+            "primary",
             "enabled",
             "name",
             "profile",
@@ -547,6 +588,7 @@ class LlamaCppGUI:
         )
         self.instances_tree = ttk.Treeview(top, columns=columns, show="headings", height=9)
         headings = {
+            "primary": "Primary",
             "enabled": "Enabled",
             "name": "Name",
             "profile": "Profile",
@@ -561,45 +603,57 @@ class LlamaCppGUI:
             "url": "OpenAI URL",
         }
         widths = {
-            "enabled": 70,
-            "name": 140,
-            "profile": 100,
-            "host": 100,
-            "port": 70,
-            "gpu": 60,
-            "ctx": 70,
-            "alias": 150,
-            "status": 90,
-            "pid": 80,
-            "healthy": 80,
-            "url": 260,
+            "primary": 60,
+            "enabled": 60,
+            "name": 170,
+            "profile": 95,
+            "host": 95,
+            "port": 55,
+            "gpu": 50,
+            "ctx": 60,
+            "alias": 130,
+            "status": 80,
+            "pid": 60,
+            "healthy": 65,
+            "url": 240,
         }
+        minwidths = {"name": 120, "alias": 90, "url": 170}
         for column in columns:
             self.instances_tree.heading(column, text=headings[column])
-            self.instances_tree.column(column, width=widths[column], stretch=column in {"name", "alias", "url"})
-        self.instances_tree.grid(row=0, column=0, sticky="ew")
+            self.instances_tree.column(
+                column,
+                width=widths[column],
+                minwidth=minwidths.get(column, widths[column]),
+                stretch=column in {"name", "alias", "url"},
+            )
+        self.instances_tree.grid(row=1, column=0, sticky="ew")
         self.instances_tree.bind("<<TreeviewSelect>>", self.on_instance_selected)
 
         y_scroll = ttk.Scrollbar(top, orient="vertical", command=self.instances_tree.yview)
         x_scroll = ttk.Scrollbar(top, orient="horizontal", command=self.instances_tree.xview)
         self.instances_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
-        y_scroll.grid(row=0, column=1, sticky="ns")
-        x_scroll.grid(row=1, column=0, sticky="ew")
+        y_scroll.grid(row=1, column=1, sticky="ns")
+        x_scroll.grid(row=2, column=0, sticky="ew")
 
-        buttons = ttk.Frame(top)
-        buttons.grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
-        self._button(buttons, text="Add", command=self.add_instance).pack(side=tk.LEFT, padx=(0, 6))
-        self._button(buttons, text="Duplicate", command=self.duplicate_instance).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Remove", command=self.remove_instance).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Start selected", command=self.start_selected_instance).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Stop selected", command=self.stop_selected_instance).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Restart selected", command=self.restart_selected_instance).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Start enabled", command=self.start_enabled_instances).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Stop all", command=self.stop_all_instances).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Copy URL", command=self.copy_selected_instance_url).pack(side=tk.LEFT, padx=6)
-        self._button(buttons, text="Use for proxy", command=self.use_selected_instance_for_proxy).pack(side=tk.LEFT, padx=6)
+        lifecycle = ttk.Frame(top)
+        lifecycle.grid(row=3, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        self._button(lifecycle, text="Start selected", command=self.start_selected_instance).pack(side=tk.LEFT, padx=(0, 6))
+        self._button(lifecycle, text="Stop selected", command=self.stop_selected_instance).pack(side=tk.LEFT, padx=6)
+        self._button(lifecycle, text="Restart selected", command=self.restart_selected_instance).pack(side=tk.LEFT, padx=6)
+        self._button(lifecycle, text="Start enabled", command=self.start_enabled_instances).pack(side=tk.LEFT, padx=6)
+        self._button(lifecycle, text="Stop all", command=self.stop_all_instances).pack(side=tk.LEFT, padx=6)
 
-        editor = ttk.LabelFrame(parent, text="Selected instance", padding=10)
+        manage = ttk.Frame(top)
+        manage.grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self._button(manage, text="Add", command=self.add_instance).pack(side=tk.LEFT, padx=(0, 6))
+        self._button(manage, text="Duplicate", command=self.duplicate_instance).pack(side=tk.LEFT, padx=6)
+        self._button(manage, text="Remove", command=self.remove_instance).pack(side=tk.LEFT, padx=6)
+        self._button(manage, text="Make primary", command=self.make_selected_instance_primary).pack(side=tk.LEFT, padx=6)
+        self._button(manage, text="Open web UI", command=self.open_selected_instance).pack(side=tk.LEFT, padx=6)
+        self._button(manage, text="Copy URL", command=self.copy_selected_instance_url).pack(side=tk.LEFT, padx=6)
+        self._button(manage, text="Use for proxy", command=self.use_selected_instance_for_proxy).pack(side=tk.LEFT, padx=6)
+
+        editor = ttk.LabelFrame(parent, text="Selected service", padding=10)
         editor.grid(row=1, column=0, sticky="ew")
         editor.columnconfigure(0, weight=1)
         editor.columnconfigure(1, weight=1)
@@ -697,7 +751,7 @@ class LlamaCppGUI:
 
         ttk.Label(
             editor,
-            text="Каждый instance хранит свои настройки. Вкладка Server для multi-instance не нужна.",
+            text="Каждый сервис хранит свои настройки. Вкладка Runtime and defaults задаёт только пути и шаблоны.",
             foreground="#555",
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
@@ -777,21 +831,26 @@ class LlamaCppGUI:
         status = ttk.LabelFrame(bottom, text="Status", padding=8)
         status.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         status.columnconfigure(1, weight=1)
+        labels = {
+            "server": "Primary service",
+            "proxy": "Ollama proxy",
+            "urls": "URLs",
+        }
         for row, key in enumerate(["server", "proxy", "urls"]):
             self.status_vars[key] = tk.StringVar()
-            ttk.Label(status, text=key.capitalize()).grid(row=row, column=0, sticky="w", padx=(0, 10))
+            ttk.Label(status, text=labels[key]).grid(row=row, column=0, sticky="w", padx=(0, 10))
             ttk.Label(status, textvariable=self.status_vars[key]).grid(row=row, column=1, sticky="w")
 
         buttons = ttk.Frame(bottom)
         buttons.grid(row=0, column=1, sticky="e")
         self._button(buttons, text="Save", command=self.save_all).grid(row=0, column=0, padx=3)
-        self._button(buttons, text="Start", command=self.start_all).grid(row=0, column=1, padx=3)
-        self._button(buttons, text="Restart", command=self.restart_all).grid(row=0, column=2, padx=3)
-        self._button(buttons, text="Stop", command=self.stop_all).grid(row=0, column=3, padx=3)
-        self._button(buttons, text="Open", command=self.open_server).grid(row=0, column=4, padx=3)
+        self._button(buttons, text="Start primary", command=self.start_all).grid(row=0, column=1, padx=3)
+        self._button(buttons, text="Restart primary", command=self.restart_all).grid(row=0, column=2, padx=3)
+        self._button(buttons, text="Stop all", command=self.stop_all).grid(row=0, column=3, padx=3)
+        self._button(buttons, text="Open primary", command=self.open_server).grid(row=0, column=4, padx=3)
         self._button(buttons, text="Copy OpenAI URL", command=self.copy_openai_url).grid(row=1, column=1, padx=3, pady=(6, 0))
         self._button(buttons, text="Copy Ollama URL", command=self.copy_ollama_url).grid(row=1, column=2, padx=3, pady=(6, 0))
-        self._button(buttons, text="Quit", command=self.root.destroy).grid(row=1, column=4, padx=3, pady=(6, 0))
+        self._button(buttons, text="Quit", command=self.on_close).grid(row=1, column=4, padx=3, pady=(6, 0))
 
     def _entry_row(self, parent: ttk.Frame, row: int, label: str, var: tk.Variable, show: str | None = None) -> ttk.Entry:
         label_widget = ttk.Label(parent, text=label)
@@ -1352,6 +1411,7 @@ class LlamaCppGUI:
             return
         selected = self.selected_instance_id
         self._refreshing_instances_table = True
+        primary_id = primary_instance_id(self.config)
         try:
             existing_ids = set(self.instances_tree.get_children())
             desired_ids: list[str] = []
@@ -1364,6 +1424,7 @@ class LlamaCppGUI:
                 if owner and not status["running"]:
                     state = "port busy"
                 values = (
+                    "yes" if instance_id == primary_id else "",
                     "yes" if status["enabled"] else "no",
                     status["name"],
                     status["profile"],
@@ -1613,6 +1674,27 @@ class LlamaCppGUI:
         status = self.manager.instance_status(instance)
         self.copy_to_clipboard(status["openai_url"])
 
+    def make_selected_instance_primary(self) -> None:
+        instance = self._selected_instance_or_warn()
+        if instance is None:
+            return
+        self.save_all(silent=True)
+        self.config["primary_instance"] = str(instance.get("id") or "")
+        save_config(self.config)
+        self.manager.update_config(self.config)
+        self.refresh_status()
+        messagebox.showinfo("Primary service", f"Главный сервис: {instance.get('name') or instance.get('id')}")
+
+    def open_selected_instance(self) -> None:
+        instance = self._selected_instance_or_warn()
+        if instance is None:
+            return
+        status = self.manager.instance_status(instance)
+        if not status["running"]:
+            messagebox.showwarning("Not running", "Сначала запустите сервис.")
+            return
+        webbrowser.open(status["url"])
+
     def use_selected_instance_for_proxy(self) -> None:
         instance = self._find_instance(self.selected_instance_id)
         if instance is None:
@@ -1629,9 +1711,21 @@ class LlamaCppGUI:
             f"Ollama proxy now points to:\n{status['openai_url']}\n\nModel: {status['alias']}",
         )
 
+    def _primary_instance_or_warn(self) -> dict[str, Any] | None:
+        instance = primary_instance(self.config)
+        if instance is None:
+            messagebox.showwarning(
+                "No primary service",
+                "Нет ни одного сервиса. Добавьте сервис на вкладке Services и нажмите Make primary.",
+            )
+        return instance
+
     def start_all(self) -> None:
         self.save_all(silent=True)
-        result = self.manager.start_server()
+        instance = self._primary_instance_or_warn()
+        if instance is None:
+            return
+        result = self.manager.start_instance(instance)
         if not result.ok:
             messagebox.showerror("Start failed", result.message)
             self.refresh_status()
@@ -1641,23 +1735,29 @@ class LlamaCppGUI:
             proxy_result = self.manager.start_proxy()
         self.refresh_status()
         if proxy_result and not proxy_result.ok:
-            messagebox.showwarning("Proxy failed", f"Server started, but proxy failed:\n{proxy_result.message}")
+            messagebox.showwarning("Proxy failed", f"Сервис запущен, но proxy не поднялся:\n{proxy_result.message}")
         else:
-            messagebox.showinfo("Started", "llama-server started.")
+            messagebox.showinfo("Started", f"Запущен сервис: {instance.get('name') or instance.get('id')}")
 
     def stop_all(self) -> None:
+        """Stop everything, including a stray server left by the old single-server mode."""
         proxy = self.manager.stop_proxy()
-        server = self.manager.stop_server()
         instance_results = self.manager.stop_all_instances()
+        results = [proxy, *instance_results]
+        if self.manager.server_status()["running"]:
+            results.append(self.manager.stop_server())
         self.refresh_status()
-        failed = [result.message for result in [proxy, server, *instance_results] if not result.ok]
+        failed = [result.message for result in results if not result.ok]
         if failed:
             messagebox.showwarning("Stop", "\n".join(failed))
 
     def restart_all(self) -> None:
         self.save_all(silent=True)
+        instance = self._primary_instance_or_warn()
+        if instance is None:
+            return
         self.manager.stop_proxy()
-        result = self.manager.restart_server()
+        result = self.manager.restart_instance(instance)
         if result.ok and bool(self.proxy_vars["enabled"].get()):
             proxy_result = self.manager.start_proxy()
             if not proxy_result.ok:
@@ -1680,11 +1780,20 @@ class LlamaCppGUI:
             messagebox.showwarning("Proxy", result.message)
 
     def open_server(self) -> None:
-        status = self.manager.server_status()
+        instance = self._primary_instance_or_warn()
+        if instance is None:
+            return
+        status = self.manager.instance_status(instance)
+        if not status["running"]:
+            messagebox.showwarning("Not running", "Сначала запустите главный сервис.")
+            return
         webbrowser.open(status["url"])
 
     def copy_openai_url(self) -> None:
-        status = self.manager.server_status()
+        instance = self._primary_instance_or_warn()
+        if instance is None:
+            return
+        status = self.manager.instance_status(instance)
         self.copy_to_clipboard(status["openai_url"])
 
     def copy_ollama_url(self) -> None:
@@ -1710,18 +1819,21 @@ class LlamaCppGUI:
     def refresh_logs(self) -> None:
         server = self.manager.server_status()
         proxy = self.manager.proxy_status()
-        selected_instance = self._find_instance(self.selected_instance_id)
-        instance_status = self.manager.instance_status(selected_instance) if selected_instance else {}
+        # Show the selected service, or fall back to the primary one.
+        target = self._find_instance(self.selected_instance_id) or primary_instance(self.config)
+        instance_status = self.manager.instance_status(target) if target else {}
         log_path = instance_status.get("log_path") or server.get("log_path") or proxy.get("log_path") or ""
         self.log_path_var.set(log_path)
         chunks = []
         if instance_status.get("log_path"):
             chunks.append(
-                f"=== instance: {instance_status.get('name')} ===\n"
+                f"=== service: {instance_status.get('name')} ===\n"
                 + tail_file(instance_status.get("log_path"), 140)
             )
-        if server.get("log_path"):
-            chunks.append("=== llama-server ===\n" + tail_file(server.get("log_path"), 140))
+        if server.get("log_path") and server.get("running"):
+            chunks.append(
+                "=== legacy single server (old mode) ===\n" + tail_file(server.get("log_path"), 140)
+            )
         if proxy.get("log_path"):
             chunks.append("=== ollama proxy ===\n" + tail_file(proxy.get("log_path"), 80))
         self.logs_text.delete("1.0", tk.END)
@@ -1736,34 +1848,32 @@ class LlamaCppGUI:
                 pass
             self._refresh_job = None
 
-        server = self.manager.server_status()
         proxy = self.manager.proxy_status()
-        owner = None
-        if not server["running"]:
-            try:
-                owner = self.manager.port_owner(server["host"], int(server["port"]))
-            except Exception:
-                owner = None
-        busy = ""
-        if owner:
-            busy = f" | port busy by pid={owner.get('pid') or '?'}"
-        server_text = (
-            f"{'running' if server['running'] else 'stopped'}"
-            f" | pid={server.get('pid') or '-'}"
-            f" | healthy={server['healthy']}"
-            f" | uptime={format_uptime(server.get('uptime') or 0)}"
-            f"{busy}"
-        )
+        instance = primary_instance(self.config)
+        if instance is None:
+            self.status_vars["server"].set("нет сервисов — добавьте сервис на вкладке Services")
+            server = None
+        else:
+            server = self.manager.instance_status(instance)
+            owner = server.get("port_owner") if not server["running"] else None
+            busy = f" | port busy by pid={owner.get('pid') or '?'}" if owner else ""
+            self.status_vars["server"].set(
+                f"{server['name']}"
+                f" | {'running' if server['running'] else 'stopped'}"
+                f" | pid={server.get('pid') or '-'}"
+                f" | healthy={server['healthy']}"
+                f" | uptime={format_uptime(server.get('uptime') or 0)}"
+                f"{busy}"
+            )
         proxy_text = (
             f"{'running' if proxy['running'] else 'stopped'}"
             f" | pid={proxy.get('pid') or '-'}"
             f" | healthy={proxy['healthy']}"
             f" | uptime={format_uptime(proxy.get('uptime') or 0)}"
         )
-        urls_text = f"OpenAI: {server['openai_url']} | Ollama: {proxy['url']}"
-        self.status_vars["server"].set(server_text)
+        openai_url = server["openai_url"] if server else "-"
         self.status_vars["proxy"].set(proxy_text)
-        self.status_vars["urls"].set(urls_text)
+        self.status_vars["urls"].set(f"OpenAI: {openai_url} | Ollama: {proxy['url']}")
         self.refresh_instances_table()
         try:
             selected_tab = self.notebook.nametowidget(self.notebook.select())
@@ -1784,12 +1894,12 @@ class LlamaCppGUI:
         if server_status["running"] or proxy_status["running"] or running_instances:
             # Build list of running services
             services = []
-            if server_status["running"]:
-                services.append("llama-server")
+            for inst in running_instances:
+                services.append(f"Service {inst.get('name', inst.get('id', 'unknown'))}")
             if proxy_status["running"]:
                 services.append("Ollama proxy")
-            for inst in running_instances:
-                services.append(f"Instance {inst.get('name', inst.get('id', 'unknown'))}")
+            if server_status["running"]:
+                services.append("legacy single server")
 
             message = f"Running services detected: {', '.join(services)}\n\n"
             message += "What would you like to do?"

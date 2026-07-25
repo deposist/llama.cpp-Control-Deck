@@ -1,55 +1,15 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-*.egg
-build/
-dist/
-.eggs/
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
 
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
+# Environment variables
+.env*.local
 
-# Local environment
-.env
-.env.*
-!.env.example
-
-# IDE / editors
-.vscode/
-.idea/
-.kiro/
-*.swp
-*.swo
-*~
+# Common ignores
+node_modules
+.next/
 .DS_Store
-
-# Project: runtime state and user config
-config.json
-config.json.backup-*
-config.local.json
-runtime/
-logs/
-*.log
-
-# Large local model files
-*.gguf
-*.ggml
-models/
-
-# Tests / coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.ruff_cache/
-.mypy_cache/
-
-# OS
-Thumbs.db
-UX_ROADMAP.md

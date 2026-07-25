@@ -1,52 +1,47 @@
-# Release Notes — llama.cpp Control Deck v1.0.3
+# Release Notes — llama.cpp Control Deck v1.1.0
 
-**Release date:** 2026-05-30
+**Release date:** 2026-07-25
 
 ## Highlights
 
-v1.0.3 is a UX-focused release. It significantly improves the browser control
-panel with accessibility, onboarding, dark mode, batch operations, drag-and-drop
-service ordering, inline validation, offline feedback, and broader RU/EN i18n.
+v1.1.0 unifies server control around one service-based workflow shared by the
+browser panel, the Tkinter GUI, and the CLI. It adds primary-service shortcuts,
+brings the web launcher up to feature parity with the GUI launcher, and improves
+Windows Git Bash Python discovery.
 
-This release does **not** include developer-only roadmap or CI audit files in the
-published repository state.
+## Service-Based Workflow
 
-## Major UX Improvements
+- Every `llama-server` now starts and stops as a service from the shared
+  `config.json` service list.
+- A `primary_instance` setting identifies the default service used by dashboard
+  actions, logs, copied URLs, and proxy defaults.
+- The Tkinter GUI opens on **Services** and provides **Start primary**,
+  **Restart primary**, **Open primary**, and **Copy OpenAI URL** actions.
+- **Stop all** also cleans up a legacy single-server process from older versions.
 
-- **Dark mode** with persisted preference and system `prefers-color-scheme`
-  fallback.
-- **First-run wizard** when runtime or model configuration is missing.
-- **Empty Services state** with a clear **Add service** call to action.
-- **Keyboard-accessible modals**: `Escape` closes dialogs, focus is trapped
-  inside active modals, and the first useful field receives focus on open.
-- **ARIA live announcements** for toast/status messages.
-- **Offline indicator** when `/api/state` polling fails.
-- **Responsive modals** with `max-height: 90vh` and internal scrolling.
+## Launchers And Setup
 
-## Service Management
+- `start_web.sh` now supports `--setup`, `--help`, dependency checks, and the
+  `LLAMA_CPP_PYTHON` override, matching `start_gui.sh`.
+- Windows Git Bash launchers reject non-functional Python aliases and try the
+  first runnable Python 3.10+ from `python3`, `python`, and `py`.
+- Local virtual environments are detected in both `.venv/bin/python` and the
+  Windows `.venv/Scripts/python.exe` layout.
 
-- Batch **Start selected** / **Stop selected** actions.
-- Checkbox selection for services.
-- Drag-and-drop service reordering saved through `POST /api/instances/reorder`.
-- **Undo delete** via button or `Ctrl+Z` / `Cmd+Z`.
-- Health sparklines showing the last 10 health states per service.
-- Inline service validation with debounce and live command preview updates.
+## Interface Improvements
 
-## Performance & Reliability
+- The old Tkinter **Server** tab is now **Runtime and defaults** and no longer
+  duplicates service start/stop controls.
+- Logs fall back to the primary service when no table row is selected.
+- Service table widths and long help banners were adjusted to avoid clipping.
+- Household help and the README now describe the same service-based workflow.
 
-- Adaptive refresh polling (`setTimeout`) replaces fixed `setInterval`.
-- Tkinter logs refresh only when the Logs tab is active.
-- Tkinter instance table updates rows in place instead of recreating the entire
-  Treeview.
-- `load_config()` uses an mtime-based cache with defensive `deepcopy()`.
-- Local browser error telemetry is stored in `logs/web-client-errors.jsonl` via
-  `POST /api/client-error`.
+## Configuration
 
-## Internationalization & Accessibility
-
-- Broader RU/EN coverage for old hardcoded labels and new UX controls.
-- Path picker file sizes now display as human-readable IEC units.
-- Text inputs use `dir="auto"` for mixed LTR/RTL text.
+- `config.example.json` includes `primary_instance`, `ui_language`, the managed
+  release backend, and the rerank service shipped by current defaults.
+- Existing configuration files remain compatible and are merged with the new
+  defaults automatically.
 
 ## Upgrade Notes
 
@@ -63,9 +58,13 @@ JavaScript assets.
 - `static/control.css`
 - `static/control.js`
 - `templates/index.html`
+- `start_gui.sh`
+- `start_web.sh`
 - `CHANGELOG.md`
 - `README.md`
 - `pyproject.toml`
+- `config.example.json`
+- `llama_server_manager.py`
 
 ## Compatibility
 

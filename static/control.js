@@ -186,29 +186,22 @@ function setChip(node, status) {
 
 function setFieldValue(id, value) {
   const node = byId(id);
-  if (document.activeElement === node) return;
+  if (!node || document.activeElement === node) return;
   node.value = value ?? "";
 }
 
-function renderProfileOptions(config) {
-  const select = byId("active-profile");
-  const current = config.active_profile || "chat";
-  const names = config.profile_order || Object.keys(config.profiles || {});
-  const existing = Array.from(select.options).map((option) => option.value).join("|");
-  if (existing !== names.join("|")) {
-    select.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      select.appendChild(option);
-    });
-  }
-  setFieldValue("active-profile", current);
+function setTextContent(id, value) {
+  const node = byId(id);
+  if (node) node.textContent = value ?? "";
 }
 
-function renderServiceProfileOptions(config) {
-  const select = byId("svc-profile");
+function profileLabel(name) {
+  const labels = state.data.config?.profile_labels || {};
+  return labels[name] || name;
+}
+
+function fillProfileSelect(select, config) {
+  if (!select) return;
   const names = config.profile_order || Object.keys(config.profiles || {});
   const existing = Array.from(select.options).map((option) => option.value).join("|");
   if (existing === names.join("|")) return;
@@ -216,9 +209,18 @@ function renderServiceProfileOptions(config) {
   names.forEach((name) => {
     const option = document.createElement("option");
     option.value = name;
-    option.textContent = name;
+    option.textContent = profileLabel(name);
     select.appendChild(option);
   });
+}
+
+function renderProfileOptions(config) {
+  fillProfileSelect(byId("active-profile"), config);
+  setFieldValue("active-profile", config.active_profile || "chat");
+}
+
+function renderServiceProfileOptions(config) {
+  fillProfileSelect(byId("svc-profile"), config);
 }
 
 function setDownloadChip(download) {
@@ -231,13 +233,21 @@ function setDownloadChip(download) {
 }
 
 function renderWarnings() {
-  const warnings = byId("warnings");
-  warnings.innerHTML = "";
+  // Dashboard shows runtime problems plus the main service.
+  // Everything else is listed once inside the Services panel.
+  const dashboard = byId("warnings");
+  const services = byId("service-warnings");
+  if (dashboard) dashboard.innerHTML = "";
+  if (services) services.innerHTML = "";
+  const primaryId = state.data.config?.primary_instance || "";
   (state.data.validation || []).forEach((item) => {
     const node = document.createElement("div");
     node.className = "warning";
     node.textContent = `${item.message} ${item.next_action || ""}`.trim();
-    warnings.appendChild(node);
+    const isServiceScoped = /^[^\s:]+:/.test(item.message || "");
+    const belongsToPrimary = primaryId && (item.message || "").startsWith(`${primaryId}:`);
+    const host = !isServiceScoped || belongsToPrimary ? dashboard : services;
+    (host || dashboard)?.appendChild(node);
   });
 }
 
@@ -274,26 +284,116 @@ function makeHealthSparkline(history) {
   return sparkline;
 }
 
+function makeEmptyServiceState() {
+  const empty = document.createElement("article");
+  empty.className = "service-empty";
+  const title = document.createElement("h3");
+  title.textContent = t("no_service_yet");
+  const text = document.createElement("p");
+  text.textContent = t("no_service_hint");
+  const button = document.createElement("button");
+  button.className = "primary-action";
+  button.dataset.action = "service-add";
+  button.textContent = t("create_first_service");
+  empty.append(title, text, button);
+  return empty;
+}
+
+function makeButton(text, attrs) {
+  const button = document.createElement("button");
+  button.textContent = text;
+  Object.entries(attrs).forEach(([key, value]) => button.setAttribute(key, value));
+  return button;
+}
+
+function renderPrimary() {
+  const host = byId("primary-card");
+  if (!host) return;
+  host.innerHTML = "";
+  const item = state.data.primary;
+  const chip = byId("primary-chip");
+  if (!item) {
+    if (chip) {
+      chip.textContent = t("no_service_yet");
+      chip.classList.remove("good");
+      chip.classList.add("bad");
+    }
+    host.appendChild(makeEmptyServiceState());
+    return;
+  }
+  if (chip) setChip(chip, item);
+
+  const card = document.createElement("article");
+  card.className = "primary-service";
+
+  const header = document.createElement("header");
+  const heading = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = item.name || item.id;
+  const subtitle = document.createElement("p");
+  subtitle.className = "muted";
+  subtitle.textContent = `${profileLabel(item.profile)} · ${modelBasename(item)}`;
+  heading.append(title, subtitle);
+  const badge = document.createElement("span");
+  badge.className = "chip";
+  badge.textContent = t("primary_badge");
+  header.append(heading, badge);
+
+  const meta = document.createElement("dl");
+  meta.className = "primary-meta";
+  [
+    [t("port"), String(item.port || "")],
+    [t("alias"), item.alias || ""],
+    [t("status"), serviceStatusLabel(item)],
+  ].forEach(([label, value]) => {
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const definition = document.createElement("dd");
+    definition.textContent = value;
+    meta.append(term, definition);
+  });
+
+  const urlRow = document.createElement("div");
+  urlRow.className = "url-row";
+  const urlLabel = document.createElement("label");
+  const urlSpan = document.createElement("span");
+  urlSpan.textContent = t("openai_url");
+  const urlInput = document.createElement("input");
+  urlInput.id = "primary-url";
+  urlInput.type = "text";
+  urlInput.readOnly = true;
+  urlInput.value = item.openai_url || "";
+  urlLabel.append(urlSpan, urlInput);
+  urlRow.append(urlLabel, makeButton(t("copy"), { "data-copy": "primary-url" }));
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const startButton = makeButton(t("start"), {
+    "data-instance": item.id,
+    "data-instance-action": "start",
+  });
+  startButton.className = "primary-action";
+  actions.append(
+    startButton,
+    makeButton(t("stop"), { "data-instance": item.id, "data-instance-action": "stop" }),
+    makeButton(t("restart"), { "data-instance": item.id, "data-instance-action": "restart" }),
+    makeButton(t("edit"), { "data-service-edit": item.id }),
+  );
+  if (item.running && item.healthy && item.url) {
+    const open = makeButton(t("open_web_ui"), { "data-open-url": item.url });
+    actions.appendChild(open);
+  }
+
+  card.append(header, meta, urlRow, actions);
+  host.appendChild(card);
+}
+
 function renderInstances() {
   const body = byId("services");
   body.innerHTML = "";
   const instances = state.data.instances || [];
   if (!instances.length) {
-    const empty = document.createElement("article");
-    empty.className = "service-empty";
-    const title = document.createElement("h3");
-    title.textContent = state.data.config?.ui_language === "ru" ? "Сервисов пока нет" : "No services yet";
-    const text = document.createElement("p");
-    text.textContent =
-      state.data.config?.ui_language === "ru"
-        ? "Добавьте первый сервис, чтобы запустить локальную модель из браузера."
-        : "Add your first service to launch a local model from the browser.";
-    const button = document.createElement("button");
-    button.className = "primary-action";
-    button.dataset.action = "service-add";
-    button.textContent = t("add_service");
-    empty.append(title, text, button);
-    body.appendChild(empty);
+    body.appendChild(makeEmptyServiceState());
     return;
   }
   instances.forEach((item) => {
@@ -324,14 +424,23 @@ function renderInstances() {
     titleDiv.appendChild(muted);
     titleDiv.appendChild(makeHealthSparkline(healthHistory));
 
+    const chips = document.createElement("div");
+    chips.className = "card-chips";
+    if (item.id === state.data.config?.primary_instance) {
+      const primaryChip = document.createElement("span");
+      primaryChip.className = "chip good";
+      primaryChip.textContent = t("primary_badge");
+      chips.appendChild(primaryChip);
+    }
     const chip = document.createElement("span");
     chip.className = "chip";
     if (item.running && item.healthy) chip.classList.add("good");
     else if (!item.running) chip.classList.add("bad");
     chip.textContent = serviceStatusLabel(item);
+    chips.appendChild(chip);
 
     header.appendChild(titleDiv);
-    header.appendChild(chip);
+    header.appendChild(chips);
 
     const meta = document.createElement("div");
     meta.className = "service-meta";
@@ -356,20 +465,48 @@ function renderInstances() {
     const actions = document.createElement("div");
     actions.className = "actions compact";
 
-    const makeBtn = (text, attrs) => {
-      const btn = document.createElement("button");
-      btn.textContent = text;
-      Object.entries(attrs).forEach(([k, v]) => btn.setAttribute(k, v));
-      return btn;
-    };
+    // Primary actions stay visible; the rest live in a "More" menu so the
+    // card never turns into a wall of buttons.
+    const startButton = makeButton(item.running ? t("restart") : t("start"), {
+      "data-instance": item.id,
+      "data-instance-action": item.running ? "restart" : "start",
+    });
+    startButton.className = "primary-action";
 
-    actions.appendChild(makeBtn(t("start"), { "data-instance": item.id, "data-instance-action": "start" }));
-    actions.appendChild(makeBtn(t("stop"), { "data-instance": item.id, "data-instance-action": "stop" }));
-    actions.appendChild(makeBtn(t("restart"), { "data-instance": item.id, "data-instance-action": "restart" }));
-    actions.appendChild(makeBtn(t("edit"), { "data-service-edit": item.id, "data-i18n": "edit" }));
-    actions.appendChild(makeBtn(t("duplicate"), { "data-service-duplicate": item.id, "data-i18n": "duplicate" }));
-    actions.appendChild(makeBtn(t("delete"), { "data-service-delete": item.id, "data-i18n": "delete" }));
-    actions.appendChild(makeBtn(t("copy"), { "data-copy": "url-" + item.id, "data-i18n": "copy" }));
+    // Group lifecycle and management buttons so the row wraps between the two
+    // groups instead of splitting a pair.
+    const lifecycleGroup = document.createElement("span");
+    lifecycleGroup.className = "btn-group";
+    lifecycleGroup.appendChild(startButton);
+    lifecycleGroup.appendChild(
+      makeButton(t("stop"), { "data-instance": item.id, "data-instance-action": "stop" }),
+    );
+    actions.appendChild(lifecycleGroup);
+
+    const manageGroup = document.createElement("span");
+    manageGroup.className = "btn-group";
+    manageGroup.appendChild(makeButton(t("edit"), { "data-service-edit": item.id }));
+
+    const more = document.createElement("details");
+    more.className = "more-menu";
+    const moreSummary = document.createElement("summary");
+    moreSummary.textContent = t("more");
+    const moreList = document.createElement("div");
+    moreList.className = "more-list";
+    if (item.id !== state.data.config?.primary_instance) {
+      moreList.appendChild(makeButton(t("make_primary"), { "data-service-primary": item.id }));
+    }
+    if (item.running && item.healthy && item.url) {
+      moreList.appendChild(makeButton(t("open_web_ui"), { "data-open-url": item.url }));
+    }
+    moreList.appendChild(makeButton(t("copy"), { "data-copy": "url-" + item.id }));
+    moreList.appendChild(makeButton(t("duplicate"), { "data-service-duplicate": item.id }));
+    const deleteButton = makeButton(t("delete"), { "data-service-delete": item.id });
+    deleteButton.className = "danger-action";
+    moreList.appendChild(deleteButton);
+    more.append(moreSummary, moreList);
+    manageGroup.appendChild(more);
+    actions.appendChild(manageGroup);
 
     card.appendChild(header);
     card.appendChild(meta);
@@ -378,25 +515,47 @@ function renderInstances() {
   });
 }
 
+function renderRuntimePanel(runtime) {
+  const chip = byId("runtime-chip");
+  if (chip) {
+    const ready = Boolean(state.data.runtime_ready);
+    chip.textContent = ready ? t("runtime_ready") : t("runtime_missing");
+    chip.classList.toggle("good", ready);
+    chip.classList.toggle("bad", !ready);
+  }
+  setTextContent(
+    "runtime-summary",
+    `${runtime.llama_server_binary || t("runtime_missing")} · ${runtime.llama_server_cwd || ""}`.trim(),
+  );
+}
+
+function renderLegacyBanner() {
+  const banner = byId("legacy-banner");
+  if (!banner) return;
+  const legacy = state.data.legacy_server || {};
+  banner.classList.toggle("hidden", !legacy.running);
+  if (!legacy.running) return;
+  setTextContent(
+    "legacy-details",
+    `PID ${legacy.pid || "?"} · ${t("port")} ${legacy.port || "?"} · ${legacy.openai_url || ""}`,
+  );
+}
+
 function render() {
   setText();
   applyTheme(localStorage.getItem("controlDeckTheme") || "auto");
   const config = state.data.config || {};
-  const profile = config.profile || {};
   const runtime = config.runtime || {};
   const proxy = config.proxy || {};
 
   setFieldValue("language", config.ui_language || "ru");
   renderProfileOptions(config);
   renderServiceProfileOptions(config);
-  byId("friendly-status").textContent = state.data.friendly?.server || "";
-  setChip(byId("server-chip"), state.data.server || {});
+  setTextContent("friendly-status", state.data.friendly?.server || "");
+  setTextContent("services-summary", state.data.friendly?.services || "");
   setChip(byId("proxy-chip"), state.data.proxy || {});
   setDownloadChip(state.data.download || {});
 
-  setFieldValue("model-path", profile.model_path || "");
-  setFieldValue("port", profile.port || 8081);
-  setFieldValue("openai-url", state.data.urls?.openai || "");
   setFieldValue("ollama-url", state.data.urls?.ollama || "");
   setFieldValue("proxy-port", proxy.port || 11435);
   setFieldValue("proxy-target", proxy.target_base_url || "");
@@ -404,14 +563,12 @@ function render() {
   setFieldValue("binary-path", runtime.llama_server_binary || "");
   setFieldValue("cwd-path", runtime.llama_server_cwd || "");
   setFieldValue("library-path", runtime.llama_server_library_path || "");
-  setFieldValue("n-ctx", profile.n_ctx || "");
-  setFieldValue("gpu-layers", profile.n_gpu_layers || "");
-  setFieldValue("threads", profile.n_threads || "");
-  setFieldValue("extra-args", profile.extra_args || "");
-  byId("runtime-summary").textContent = `${runtime.llama_server_binary || "llama-server not selected"} · ${runtime.llama_server_cwd || "working dir not selected"}`;
+  renderRuntimePanel(runtime);
   renderDownload(state.data.download || {});
+  renderLegacyBanner();
 
   renderWarnings();
+  renderPrimary();
   renderInstances();
   byId("undo-delete")?.classList.toggle("hidden", !state.lastDeletedService);
   maybeShowFirstRunWizard();
@@ -420,7 +577,8 @@ function render() {
 function maybeShowFirstRunWizard() {
   if (localStorage.getItem("controlDeckFirstRunDismissed") === "1") return;
   const warningCodes = new Set((state.data.validation || []).map((item) => item.code));
-  const needsSetup = warningCodes.has("missing_binary") || warningCodes.has("missing_model");
+  const needsSetup =
+    warningCodes.has("missing_binary") || warningCodes.has("no_services") || !state.data.runtime_ready;
   if (needsSetup) {
     const modal = byId("first-run-modal");
     if (modal?.classList.contains("hidden")) {
@@ -623,14 +781,6 @@ function configPatch() {
       llama_server_cwd: byId("cwd-path").value,
       llama_server_library_path: byId("library-path").value,
     },
-    profile: {
-      model_path: byId("model-path").value,
-      port: byId("port").value,
-      n_ctx: byId("n-ctx").value,
-      n_gpu_layers: byId("gpu-layers").value,
-      n_threads: byId("threads").value,
-      extra_args: byId("extra-args").value,
-    },
     proxy: {
       port: byId("proxy-port").value,
       target_base_url: byId("proxy-target").value,
@@ -669,9 +819,11 @@ async function saveConfig(showToast = true) {
 async function action(name) {
   const endpoints = {
     autodetect: ["/api/runtime/autodetect", "POST"],
-    "server-start": ["/api/server/start", "POST"],
-    "server-stop": ["/api/server/stop", "POST"],
-    "server-restart": ["/api/server/restart", "POST"],
+    // Legacy single-server process: only migration and stop remain in the UI.
+    "legacy-import": ["/api/server/import", "POST"],
+    "legacy-stop": ["/api/server/stop", "POST"],
+    "services-start-enabled": ["/api/instances/start-enabled", "POST"],
+    "services-stop-all": ["/api/instances/stop-all", "POST"],
     "proxy-start": ["/api/proxy/start", "POST"],
     "proxy-stop": ["/api/proxy/stop", "POST"],
     devices: ["/api/devices", "GET"],
@@ -691,13 +843,19 @@ async function action(name) {
   if (name === "service-validate") return serviceValidate();
   if (name === "path-close") return closePathPicker();
   if (name === "first-run-close") return closeFirstRunWizard();
+  if (name === "first-run-add-service") {
+    closeFirstRunWizard();
+    return serviceAdd();
+  }
   if (name.startsWith("logs-")) return loadLogs(name.replace("logs-", ""));
 
-  if (name.startsWith("server-") || name.startsWith("proxy-")) {
+  if (name.startsWith("proxy-")) {
     await saveConfig(false);
   }
 
-  const [path, method] = endpoints[name];
+  const endpoint = endpoints[name];
+  if (!endpoint) return;
+  const [path, method] = endpoint;
   const result = await api(path, { method });
   byId("output").textContent = JSON.stringify(result.details || result, null, 2);
   if (name === "release-download" || name === "download-status") {
@@ -708,7 +866,14 @@ async function action(name) {
 }
 
 async function loadLogs(kind) {
-  const result = await api(`/api/logs?kind=${encodeURIComponent(kind)}&lines=240`);
+  const service = kind === "service" ? state.data.config?.primary_instance || "" : "";
+  if (kind === "service" && !service) {
+    toast(t("select_service_first"));
+    return;
+  }
+  const result = await api(
+    `/api/logs?kind=${encodeURIComponent(kind)}&service=${encodeURIComponent(service)}&lines=240`,
+  );
   const text = result.text || "No logs";
   const hint = diagnosticHint(text);
   byId("output").textContent = hint ? `${hint}\n\n${text}` : text;
@@ -831,6 +996,13 @@ async function serviceSave(start) {
   await refresh();
 }
 
+async function setPrimaryService(id) {
+  const result = await api(`/api/instances/${encodeURIComponent(id)}/primary`, { method: "POST" });
+  if (result.details) state.data = result.details;
+  render();
+  toast(result.message);
+}
+
 async function undoDeleteService() {
   if (!state.lastDeletedService) {
     toast("Nothing to undo.");
@@ -859,6 +1031,8 @@ document.addEventListener("click", async (event) => {
   const serviceDuplicateId = event.target.dataset.serviceDuplicate;
   const serviceDeleteId = event.target.dataset.serviceDelete;
   const serviceSelectId = event.target.dataset.serviceSelect;
+  const servicePrimaryId = event.target.dataset.servicePrimary;
+  const openUrl = event.target.dataset.openUrl;
   const browseTarget = event.target.dataset.browseTarget;
   const browseKind = event.target.dataset.browseKind;
   const tab = event.target.dataset.tab;
@@ -874,6 +1048,8 @@ document.addEventListener("click", async (event) => {
     if (serviceEditId) await serviceEdit(serviceEditId);
     if (serviceDuplicateId) await serviceDuplicate(serviceDuplicateId);
     if (serviceDeleteId) await serviceDelete(serviceDeleteId);
+    if (servicePrimaryId) await setPrimaryService(servicePrimaryId);
+    if (openUrl) window.open(openUrl, "_blank", "noopener");
     if (serviceSelectId) {
       if (event.target.checked) state.selectedServices.add(serviceSelectId);
       else state.selectedServices.delete(serviceSelectId);
@@ -882,6 +1058,21 @@ document.addEventListener("click", async (event) => {
   } catch (error) {
     toast(error.message);
   }
+});
+
+// Close any open "More" menu after an action runs or when clicking elsewhere.
+document.addEventListener("click", (event) => {
+  const openMenu = event.target.closest(".more-menu");
+  document.querySelectorAll(".more-menu[open]").forEach((menu) => {
+    if (menu !== openMenu || event.target.closest(".more-list")) menu.open = false;
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  document.querySelectorAll(".more-menu[open]").forEach((menu) => {
+    menu.open = false;
+  });
 });
 
 let _draggedServiceId = "";

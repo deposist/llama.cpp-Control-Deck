@@ -4,7 +4,7 @@
 
 `llama.cpp Control Deck` helps you run one or many local GGUF models without
 turning every launch into a long shell command. It provides a local FastAPI web
-UI, a legacy Tkinter GUI, multi-instance process management, GPU/device
+UI, a Tkinter desktop GUI, multi-service process management, GPU/device
 diagnostics, log viewing, automatic runtime path detection, beginner-friendly
 setup, and an Ollama-compatible proxy that forwards requests to the
 OpenAI-compatible API exposed by `llama-server`.
@@ -19,11 +19,15 @@ OpenAI-compatible API exposed by `llama-server`.
 
 ### GitHub Description
 
-Tkinter GUI + Ollama-compatible FastAPI proxy for managing one or many local
-`llama.cpp` `llama-server` instances.
+Web panel and Tkinter GUI + Ollama-compatible FastAPI proxy for managing one or
+many local `llama.cpp` `llama-server` instances.
 
 ### Features
 
+- One launch model: every server is a service. Both the web panel and the GUI
+  start, stop, and restart the same services from the same `config.json`.
+- A primary service marked in the service list drives the dashboard, the
+  one-click start buttons, and the copied OpenAI URL.
 - GUI control for local models: start, stop, restart, status, uptime,
   health checks, and logs.
 - Web UX improvements: dark mode, first-run wizard, keyboard-accessible modals,
@@ -110,8 +114,14 @@ sudo apt install -y python3-tk
 ./start_gui.sh
 ```
 
-After the GUI opens, go to **Server**, click **Auto-detect runtime**, choose a
-`.gguf` model, and click **Start**.
+After the GUI opens:
+
+1. Go to **Runtime and defaults** and click **Auto-detect runtime**.
+2. Go to **Services**, select the `Chat 8081` row, and pick a `.gguf` model.
+3. Click **Save**, then **Start primary** in the bottom bar.
+
+Everything runs as a service, so there is no separate "start a single server"
+mode to learn.
 
 ### Installing `llama.cpp`
 
@@ -167,12 +177,12 @@ Downloads run in the background and the page shows the current status plus the
 latest progress lines, so the browser does not look frozen during large
 archives.
 
-Use **Services** to manage multi-instance servers from the browser. The web UI
-can add, edit, validate, duplicate, delete, start, stop, and restart services,
-while keeping the existing `config.json` instance format compatible with the
-legacy Tkinter GUI and CLI.
+Use **Services** to manage every server from the browser. The web UI can add,
+edit, validate, duplicate, delete, start, stop, and restart services. The
+`config.json` format is shared with the Tkinter GUI and CLI, so both panels show
+the same services and the same primary service.
 
-Legacy Tkinter GUI:
+Desktop Tkinter GUI:
 
 ```bash
 ./start_gui.sh
@@ -203,14 +213,19 @@ python3 llama_cpp_gui.py --skip-device-refresh
 
 ### First Model Launch
 
-1. Open the **Server** tab.
+1. Open the **Runtime and defaults** tab.
 2. If you did not start with `--setup`, click **Beginner setup**.
 3. Click **Auto-detect runtime**.
-4. Select a model in **Model .gguf**.
-5. Check **Host**, **Port**, **Context**, and **GPU layers**.
-6. Click **Save**.
-7. Click **Start**.
-8. When the server is `running`, click **Copy OpenAI URL**.
+4. Open the **Services** tab and select the `Chat 8081` row.
+5. Select a model in **Model .gguf**.
+6. Check **Host**, **Port**, **Context**, and **GPU layers**.
+7. Click **Save**.
+8. Click **Start primary** in the bottom bar.
+9. When the service is `running`, click **Copy OpenAI URL**.
+
+The bottom bar always acts on the primary service, which is the row marked
+`yes` in the **Primary** column. Use **Make primary** to move that mark to
+another service.
 
 The URL will look like this:
 
@@ -222,16 +237,20 @@ Use it in Open WebUI, Continue, an OpenAI-compatible client, or a RAG app.
 
 ### Running Multiple Models
 
-Use the **Instances** tab for multiple servers.
+The same **Services** tab handles any number of servers.
 
 1. Select an existing row or click **Add**.
 2. Set `Profile`, `Model .gguf`, `Port`, and `Alias`.
-3. Click **Apply to selected**.
-4. Click **Start selected** or **Start enabled**.
+3. Click **Save**.
+4. Click **Start selected** to start the highlighted rows, or **Start enabled**
+   to start every service with **Enabled** checked.
+
+Use **Stop all** to shut everything down at once. Ports must be unique; the
+panels warn about conflicts before starting.
 
 Typical layout:
 
-| Instance | Profile | Port | Purpose |
+| Service | Profile | Port | Purpose |
 |----------|---------|------|---------|
 | Chat | `chat` | `8081` | conversational LLM |
 | Embeddings | `embeddings` | `8082` | RAG embeddings |
@@ -300,7 +319,7 @@ python3 config.py --apply-runtime
 
 ### Downloading And Updating `llama-server`
 
-The **Server → Runtime** block includes release-management buttons:
+The **Runtime and defaults** tab includes release-management buttons:
 
 - **Check server version** runs the selected `llama-server --version`.
 - **Check updates** checks the latest `ggml-org/llama.cpp` GitHub release and
@@ -432,11 +451,15 @@ Do not publish API keys, private paths, or logs with sensitive data.
 
 ### Описание для GitHub
 
-Tkinter GUI + Ollama-compatible FastAPI proxy для управления одним или
-несколькими локальными `llama.cpp` `llama-server` instance.
+Веб-панель и Tkinter GUI + Ollama-compatible FastAPI proxy для управления одним
+или несколькими локальными `llama.cpp` `llama-server`.
 
 ### Возможности
 
+- Единая модель запуска: каждый сервер — это сервис. Веб-панель и GUI запускают,
+  останавливают и перезапускают одни и те же сервисы из общего `config.json`.
+- Главный сервис, отмеченный в списке, управляет дашбордом, кнопками запуска
+  в один клик и копируемым OpenAI URL.
 - Управление локальными моделями через GUI: запуск, остановка, рестарт, статус,
   uptime, health-check и логи.
 - Улучшенный Web UX: dark mode, мастер первого запуска, keyboard-accessible
@@ -461,7 +484,7 @@ Tkinter GUI + Ollama-compatible FastAPI proxy для управления одн
 
 Проект подойдёт, если вы:
 
-- запускаете несколько локальных моделей одновременно, например LLM +
+- запускаете несколько локальных моделей одновременно, напр��мер LLM +
   embeddings + rerank;
 - хотите заменить Ollama на прямой `llama.cpp`, но оставить совместимость с
   Ollama-клиентами;
@@ -486,7 +509,7 @@ Tkinter GUI + Ollama-compatible FastAPI proxy для управления одн
 - `python3-pip`
 - `python3-tk` / `python3-tkinter` / `tk`
 
-Python-зависимости:
+Python-зависимост��:
 
 - `psutil`
 - `fastapi`
@@ -525,8 +548,14 @@ sudo apt install -y python3-tk
 ./start_gui.sh
 ```
 
-Если GUI открылся, перейдите во вкладку **Server**, нажмите
-**Auto-detect runtime**, выберите `.gguf` модель и нажмите **Start**.
+Когда GUI откроется:
+
+1. Во вкладке **Runtime and defaults** нажмите **Auto-detect runtime**.
+2. Во вкладке **Services** выберите строку `Chat 8081` и укажите `.gguf` модель.
+3. Нажмите **Save**, затем **Start primary** в нижней панели.
+
+Всё работает как сервисы, поэтому отдельного режима «запустить один сервер»
+изучать не нужно.
 
 ### Установка `llama.cpp`
 
@@ -582,11 +611,12 @@ release. Загрузки выполняются в фоне, а страниц�
 последние строки прогресса, чтобы браузер не выглядел зависшим во время
 загрузки больших архивов.
 
-Раздел **Services** управляет multi-instance серверами из браузера: добавление,
-редактирование, валидация, дублирование, удаление, запуск, остановка и рестарт,
-с сохранением совместимости формата `config.json` с legacy Tkinter GUI и CLI.
+Раздел **Services** управляет всеми серверами из браузера: добавление,
+редактирование, валидация, дублирование, удаление, запуск, остановка и рестарт.
+Формат `config.json` общий с Tkinter GUI и CLI, поэтому веб-панель и GUI
+показывают одни и те же сервисы и один и тот же главный сервис.
 
-### Запуск GUI (legacy)
+### Запуск GUI
 
 ```bash
 ./start_gui.sh
@@ -615,14 +645,19 @@ python3 llama_cpp_gui.py --skip-device-refresh
 
 ### Первый запуск модели
 
-1. Откройте вкладку **Server**.
+1. Откройте вкладку **Runtime and defaults**.
 2. Если запускали GUI не через `--setup`, нажмите **Beginner setup**.
 3. Нажмите **Auto-detect runtime**.
-4. В поле **Model .gguf** выберите модель.
-5. Проверьте **Host**, **Port**, **Context**, **GPU layers**.
-6. Нажмите **Save**.
-7. Нажмите **Start**.
-8. Когда сервер стал `running`, нажмите **Copy OpenAI URL**.
+4. Откройте вкладку **Services** и выберите строку `Chat 8081`.
+5. В поле **Model .gguf** выберите модель.
+6. Проверьте **Host**, **Port**, **Context**, **GPU layers**.
+7. Нажмите **Save**.
+8. Нажмите **Start primary** в нижней панели.
+9. Когда сервис стал `running`, нажмите **Copy OpenAI URL**.
+
+Кнопки нижней панели всегда работают с главным сервисом — это строка со
+значением `yes` в столбце **Primary**. Перенести отметку на другой сервис можно
+кнопкой **Make primary**.
 
 URL будет выглядеть примерно так:
 
@@ -635,16 +670,20 @@ http://127.0.0.1:8081/v1
 
 ### Несколько моделей одновременно
 
-Для нескольких серверов используйте вкладку **Instances**.
+Та же вкладка **Services** работает с любым количеством серверов.
 
 1. Выберите существующую строку или нажмите **Add**.
 2. Укажите `Profile`, `Model .gguf`, `Port`, `Alias`.
-3. Нажмите **Apply to selected**.
-4. Нажмите **Start selected** или **Start enabled**.
+3. Нажмите **Save**.
+4. Нажмите **Start selected** для выделенных строк или **Start enabled** для
+   всех сервисов с галочкой **Enabled**.
+
+Кнопка **Stop all** выключает всё сразу. Порты должны быть уникальными —
+панели предупреждают о конфликтах до запуска.
 
 Типичный набор:
 
-| Instance | Profile | Port | Назначение |
+| Сервис | Profile | Port | Назначение |
 |----------|---------|------|------------|
 | Chat | `chat` | `8081` | диалоговая модель |
 | Embeddings | `embeddings` | `8082` | RAG-векторизация |
@@ -712,7 +751,7 @@ python3 config.py --apply-runtime
 
 ### Скачивание и обновление `llama-server`
 
-В блоке **Server → Runtime** есть кнопки управления release:
+Во вкладке **Runtime and defaults** есть кнопки управления release:
 
 - **Check server version** запускает `llama-server --version` для выбранного
   бинарника.
@@ -725,7 +764,7 @@ python3 config.py --apply-runtime
 
 | Backend | Примечание |
 |---------|------------|
-| `auto` / `cpu` | Самый совместимый prebuilt Linux-вариант. |
+| `auto` / `cpu` | Самый совместим��й prebuilt Linux-вариант. |
 | `vulkan` | GPU acceleration через Vulkan drivers. |
 | `rocm` | AMD ROCm build, нужен ROCm runtime. |
 | `openvino` | Intel OpenVINO build. |

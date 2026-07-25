@@ -1,10 +1,13 @@
 {
   "schema_version": 1,
+  "ui_language": "ru",
   "python_path": "",
   "llama_server_binary": "",
   "llama_server_cwd": "",
   "llama_server_library_path": "",
+  "llama_cpp_release_backend": "auto",
   "active_profile": "chat",
+  "primary_instance": "chat-8081",
   "profiles": {
     "chat": {
       "profile_type": "chat",
@@ -187,6 +190,18 @@
       "split_mode": "none",
       "flash_attn": "auto",
       "extra_args": "--pooling cls"
+    },
+    {
+      "id": "rerank-8083",
+      "name": "Rerank 8083",
+      "enabled": false,
+      "profile": "rerank",
+      "model_path": "",
+      "host": "127.0.0.1",
+      "port": 8083,
+      "alias": "local-rerank",
+      "api_key": "",
+      "extra_args": ""
     }
   ],
   "ollama_proxy": {

@@ -142,6 +142,27 @@ h2 {
   gap: 8px;
 }
 
+/* Related buttons stay on one line together, so a toolbar breaks between groups
+   instead of stranding a single button on its own row. */
+.btn-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+/* Keep the language picker on one line so it lines up with the topbar buttons,
+   overriding the stacked `label { display: grid }` used by form fields. */
+.lang-field {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.lang-field select {
+  width: auto;
+}
+
 .layout {
   display: grid;
   gap: 14px;
@@ -191,6 +212,127 @@ h2 {
 
 .muted {
   color: var(--muted);
+}
+
+.hint {
+  margin-bottom: 12px;
+}
+
+.card-chips {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel.primary {
+  border-color: var(--accent);
+}
+
+.panel.notice {
+  border-color: var(--warn);
+}
+
+.primary-service {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+}
+
+.primary-service header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.primary-service h3 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.primary-service header p {
+  margin-top: 3px;
+}
+
+.primary-meta {
+  /* dt and dd are separate grid items, so flow by column with two fixed rows.
+     That keeps every caption directly above its own value instead of letting
+     pairs split across rows. */
+  display: grid;
+  gap: 4px 14px;
+  grid-auto-columns: minmax(110px, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
+  margin: 0;
+}
+
+.primary-meta dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.primary-meta dd {
+  font-weight: 600;
+  margin: 0;
+}
+
+.more-menu {
+  position: relative;
+}
+
+.more-menu > summary {
+  align-items: center;
+  background: var(--control);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  /* Match the button metrics so this sits level with neighbouring buttons. */
+  display: flex;
+  font: inherit;
+  font-weight: 500;
+  list-style: none;
+  margin: 0;
+  min-height: 36px;
+  padding: 7px 12px;
+}
+
+.more-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-list {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+}
+
+.more-list button {
+  border-color: transparent;
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+}
+
+.more-list button:hover {
+  border-color: var(--line);
+}
+
+.danger-action {
+  color: var(--bad);
 }
 
 .field-grid,
@@ -304,11 +446,19 @@ select:focus {
 }
 
 .url-row {
+  /* The label stacks its caption above the input, so align trailing controls to
+     the bottom edge to keep them level with the input, not with the caption. */
+  align-items: flex-end;
   margin-top: 14px;
 }
 
 .url-row label {
   flex: 1 1 280px;
+}
+
+.url-row > .chip {
+  /* Nudge the shorter status chip onto the input's centre line. */
+  margin-bottom: 4px;
 }
 
 .path-field {
@@ -335,10 +485,13 @@ summary {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+/* A flex column lets the action block claim the leftover space with an auto
+   margin, so button rows line up across cards whose text wraps differently. */
 .service-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 13px;
 }
@@ -558,8 +711,43 @@ summary {
   color: var(--text);
 }
 
-.compact {
-  justify-content: flex-end;
+/* Toolbars lay out as an even two-column block so both rows share the same
+   left and right edges instead of looking lopsided. Sizing the grid to its
+   content keeps the columns as wide as the widest button, no wider. */
+.actions.compact {
+  display: inline-grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-self: end;
+}
+
+/* The primary action leads the block on a full-width row of its own. */
+.actions.compact > .primary-action {
+  grid-column: 1 / -1;
+}
+
+/* Let the buttons themselves become the grid items so every column matches. */
+.actions.compact .btn-group {
+  display: contents;
+}
+
+.actions.compact > button,
+.actions.compact .btn-group > button,
+.actions.compact .more-menu,
+.actions.compact .more-menu > summary {
+  width: 100%;
+}
+
+.actions.compact .more-menu > summary {
+  justify-content: center;
+}
+
+/* Cards have a known width, so their four buttons span it as a tidy 2x2 block:
+   start/stop on the first row, edit/more on the second. The auto top margin
+   pins the block to the card's bottom edge so it lines up with sibling cards. */
+.service-card .actions.compact {
+  display: grid;
+  margin-top: auto;
 }
 
 pre {
@@ -609,6 +797,23 @@ pre {
   .advanced-grid,
   .runtime-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Three columns overflow a phone, so list each pair on its own row. */
+  .primary-meta {
+    grid-auto-flow: row;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  /* Give panel toolbars their own full-width row below the heading, otherwise
+     they hug the right edge and leave a lopsided gap on the left. */
+  .panel-title {
+    flex-wrap: wrap;
+  }
+
+  .actions.compact {
+    flex: 1 1 100%;
   }
 
   .path-entry,

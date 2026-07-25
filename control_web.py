@@ -34,6 +34,8 @@ from config import (
     apply_runtime_autodetect,
     get_profile,
     load_config,
+    primary_instance_id,
+    profile_display_name,
     save_config,
 )
 from llama_server_manager import LlamaServerManager, ProcessResult, tail_file
@@ -148,6 +150,36 @@ REQUIRED_I18N_KEYS = [
     "host",
     "metrics",
     "browse",
+    "dashboard",
+    "dashboard_hint",
+    "main_service",
+    "no_service_yet",
+    "no_service_hint",
+    "create_first_service",
+    "make_primary",
+    "primary_badge",
+    "open_web_ui",
+    "start_enabled",
+    "stop_all",
+    "services_hint",
+    "services_summary",
+    "setup",
+    "setup_hint",
+    "templates",
+    "templates_hint",
+    "template_for_new",
+    "legacy_server_title",
+    "legacy_server_hint",
+    "import_as_service",
+    "stop_legacy_server",
+    "logs_for_service",
+    "select_service_first",
+    "runtime_ready",
+    "runtime_missing",
+    "step_runtime",
+    "step_service",
+    "step_start",
+    "more",
 ]
 
 I18N: dict[str, dict[str, str]] = {
@@ -249,6 +281,36 @@ I18N: dict[str, dict[str, str]] = {
         "host": "Host",
         "metrics": "metrics",
         "browse": "Выбрать",
+        "dashboard": "Главный сервис",
+        "dashboard_hint": "Всё запускается через сервисы. Здесь показан сервис, который вы используете по умолчанию.",
+        "main_service": "Главный сервис",
+        "no_service_yet": "Сервисов пока нет",
+        "no_service_hint": "Создайте сервис — это одна модель на одном порту. Запуск и остановка выполняются только для сервисов.",
+        "create_first_service": "Создать первый сервис",
+        "make_primary": "Сделать главным",
+        "primary_badge": "главный",
+        "open_web_ui": "Открыть web UI",
+        "start_enabled": "Запустить включённые",
+        "stop_all": "Остановить все",
+        "services_hint": "Каждая строка — отдельный llama-server со своим портом, моделью и настройками.",
+        "services_summary": "Сервисы",
+        "setup": "Установка и окружение",
+        "setup_hint": "Проверьте, что найдены Python и llama-server. Без них сервисы не запустятся.",
+        "templates": "Шаблоны сервисов",
+        "templates_hint": "Профиль — это только шаблон значений для нового сервиса. Сам профиль ничего не запускает.",
+        "template_for_new": "Шаблон для новых сервисов",
+        "legacy_server_title": "Запущен одиночный сервер (старый режим)",
+        "legacy_server_hint": "Этот процесс запущен вне списка сервисов. Перенесите его в сервисы или остановите, чтобы не путаться с портами.",
+        "import_as_service": "Перенести в сервисы",
+        "stop_legacy_server": "Остановить одиночный сервер",
+        "logs_for_service": "Логи главного сервиса",
+        "select_service_first": "Сначала создайте или выберите сервис.",
+        "runtime_ready": "Окружение готово",
+        "runtime_missing": "Окружение не настроено",
+        "step_runtime": "Найдите окружение: Python, llama-server, рабочая папка и библиотеки.",
+        "step_service": "Создайте сервис и выберите файл модели .gguf.",
+        "step_start": "Нажмите «Запустить» в карточке сервиса.",
+        "more": "Ещё",
     },
     "en": {
         "app_title": "llama.cpp Control Deck",
@@ -348,6 +410,36 @@ I18N: dict[str, dict[str, str]] = {
         "host": "Host",
         "metrics": "metrics",
         "browse": "Browse",
+        "dashboard": "Main service",
+        "dashboard_hint": "Everything starts as a service. This card shows the service you use by default.",
+        "main_service": "Main service",
+        "no_service_yet": "No services yet",
+        "no_service_hint": "Create a service: one model on one port. Start and stop always happen per service.",
+        "create_first_service": "Create first service",
+        "make_primary": "Make main",
+        "primary_badge": "main",
+        "open_web_ui": "Open web UI",
+        "start_enabled": "Start enabled",
+        "stop_all": "Stop all",
+        "services_hint": "Each row is its own llama-server with its own port, model, and settings.",
+        "services_summary": "Services",
+        "setup": "Setup and runtime",
+        "setup_hint": "Make sure Python and llama-server were found. Services cannot start without them.",
+        "templates": "Service templates",
+        "templates_hint": "A profile is only a set of default values for a new service. Profiles never start anything.",
+        "template_for_new": "Template for new services",
+        "legacy_server_title": "Single server is running (legacy mode)",
+        "legacy_server_hint": "This process runs outside the service list. Import it as a service or stop it to avoid port confusion.",
+        "import_as_service": "Import as service",
+        "stop_legacy_server": "Stop single server",
+        "logs_for_service": "Main service logs",
+        "select_service_first": "Create or select a service first.",
+        "runtime_ready": "Runtime is ready",
+        "runtime_missing": "Runtime is not configured",
+        "step_runtime": "Detect the runtime: Python, llama-server, working directory, and libraries.",
+        "step_service": "Create a service and pick a .gguf model file.",
+        "step_start": "Press Start on the service card.",
+        "more": "More",
     },
 }
 
@@ -430,6 +522,7 @@ _DOWNLOAD_JOB: dict[str, Any] = {
 class ConfigPatch(BaseModel):
     ui_language: str | None = None
     active_profile: str | None = None
+    primary_instance: str | None = None
     runtime: dict[str, Any] | None = None
     profile: dict[str, Any] | None = None
     proxy: dict[str, Any] | None = None
@@ -733,11 +826,9 @@ def validate_path_choice(path: Any, kind: str) -> dict[str, Any]:
     return {"ok": True, "message": "Path is valid.", "details": details}
 
 
-def validate_config(config: dict[str, Any]) -> list[dict[str, str]]:
-    """Return user-facing preflight warnings without mutating config."""
+def validate_runtime(config: dict[str, Any]) -> list[dict[str, str]]:
+    """Return runtime-level warnings shared by every service."""
     warnings: list[dict[str, str]] = []
-    profile = active_profile(config)
-    profile_type = str(profile.get("profile_type") or config.get("active_profile") or "chat")
 
     binary = str(config.get("llama_server_binary") or "").strip()
     if not binary:
@@ -757,25 +848,6 @@ def validate_config(config: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
 
-    model_path = str(profile.get("model_path") or "").strip()
-    if profile_type != "router":
-        if not model_path:
-            warnings.append(
-                {
-                    "code": "missing_model",
-                    "message": "Model .gguf is not selected.",
-                    "next_action": "Set the GGUF model path, then save.",
-                }
-            )
-        elif not Path(model_path).expanduser().exists():
-            warnings.append(
-                {
-                    "code": "missing_model",
-                    "message": f"Model file not found: {model_path}",
-                    "next_action": "Select an existing .gguf model file.",
-                }
-            )
-
     for key in ["llama_server_cwd", "llama_server_library_path"]:
         value = str(config.get(key) or "").strip()
         if value and not _path_exists(value, directory=True):
@@ -786,76 +858,51 @@ def validate_config(config: dict[str, Any]) -> list[dict[str, str]]:
                     "next_action": "Run Auto-detect runtime or select an existing directory.",
                 }
             )
+    return warnings
 
-    host = str(profile.get("host") or "127.0.0.1")
-    port = profile.get("port") or 8081
-    try:
-        port_number = int(port)
-        if port_number < 1 or port_number > 65535:
-            raise ValueError
-    except (TypeError, ValueError):
+
+def validate_config(config: dict[str, Any]) -> list[dict[str, str]]:
+    """Return dashboard warnings: runtime problems plus service problems.
+
+    Only services can be started, so per-service issues are reported here
+    instead of validating the profile templates.
+    """
+    warnings = validate_runtime(config)
+    instances = config.get("instances") or []
+    if not instances:
         warnings.append(
             {
-                "code": "invalid_port",
-                "message": f"Port is invalid: {port}",
-                "next_action": "Use a number from 1 to 65535.",
+                "code": "no_services",
+                "message": "No services are configured.",
+                "next_action": "Add a service to run a model.",
             }
         )
-        port_number = 8081
+        return warnings
 
-    numeric_fields = [
-        "n_ctx",
-        "n_threads",
-        "n_threads_batch",
-        "main_gpu",
-        "n_batch",
-        "n_ubatch",
-        "models_max",
-    ]
-    for key in numeric_fields:
-        value = profile.get(key)
-        if value in {None, ""}:
-            continue
-        try:
-            int(value)
-        except (TypeError, ValueError):
+    seen_ports: dict[str, str] = {}
+    for instance in instances:
+        instance_id = _instance_id(instance)
+        host = str(instance.get("host") or "127.0.0.1")
+        port = str(instance.get("port") or "")
+        key = f"{host}:{port}"
+        if port and key in seen_ports:
             warnings.append(
                 {
-                    "code": f"invalid_{key}",
-                    "message": f"{key} must be a number.",
-                    "next_action": "Fix the value in Advanced settings.",
+                    "code": "duplicate_port",
+                    "message": f"Services {seen_ports[key]} and {instance_id} share port {port}.",
+                    "next_action": "Give every service its own port.",
                 }
             )
-
-    gpu_layers = profile.get("n_gpu_layers")
-    if gpu_layers not in {None, "", "all"}:
-        try:
-            int(gpu_layers)
-        except (TypeError, ValueError):
+        elif port:
+            seen_ports[key] = instance_id
+        for item in validate_instance(config, instance, instance_id, check_port_owner=False):
             warnings.append(
                 {
-                    "code": "invalid_n_gpu_layers",
-                    "message": "GPU layers must be a number or 'all'.",
-                    "next_action": "Use 'all' or a numeric layer count.",
+                    "code": item.get("code", ""),
+                    "message": f"{instance_id}: {item.get('message', '')}",
+                    "next_action": item.get("next_action", ""),
                 }
             )
-
-    manager = _manager()
-    server = manager.server_status()
-    server_owns_port = (
-        server.get("running")
-        and str(server.get("host") or host) == host
-        and int(server.get("port") or 0) == port_number
-    )
-    owner = None if server_owns_port else manager.port_owner(host, port_number)
-    if owner:
-        warnings.append(
-            {
-                "code": "busy_port",
-                "message": f"Port {port_number} is busy.",
-                "next_action": "Choose another port or stop the process that uses it.",
-            }
-        )
     return warnings
 
 
@@ -971,6 +1018,8 @@ def validate_instance(
     config: dict[str, Any],
     instance: dict[str, Any],
     original_id: str | None = None,
+    *,
+    check_port_owner: bool = True,
 ) -> list[dict[str, str]]:
     warnings: list[dict[str, str]] = []
     cleaned = _clean_instance(instance)
@@ -1013,7 +1062,7 @@ def validate_instance(
         )
         port = 0
 
-    if port:
+    if port and check_port_owner:
         owner = LlamaServerManager(config).port_owner(host, port)
         if owner and not _port_owner_is_self(config, original_id, host, port):
             warnings.append(
@@ -1133,36 +1182,75 @@ def _public_config(config: dict[str, Any]) -> dict[str, Any]:
     return {
         "ui_language": _language(config),
         "active_profile": config.get("active_profile"),
+        "primary_instance": primary_instance_id(config),
         "runtime": {key: config.get(key, "") for key in RUNTIME_KEYS},
         "llama_cpp_release_backend": config.get("llama_cpp_release_backend", "auto"),
         "profile": deepcopy(active_profile(config)),
         "profiles": deepcopy(config.get("profiles") or {}),
         "profile_order": list(PROFILE_ORDER),
+        "profile_labels": {name: profile_display_name(name) for name in PROFILE_ORDER},
         "instances": deepcopy(config.get("instances") or []),
         "proxy": deepcopy(config.get("ollama_proxy") or {}),
     }
+
+
+def _services_summary(instances: list[dict[str, Any]], language: str) -> str:
+    total = len(instances)
+    running = sum(1 for item in instances if item.get("running"))
+    ready = sum(1 for item in instances if item.get("running") and item.get("healthy"))
+    if language == "en":
+        if not total:
+            return "No services configured yet"
+        return f"{total} service(s) · {running} running · {ready} ready"
+    if not total:
+        return "Сервисы пока не созданы"
+    return f"Сервисов: {total} · запущено: {running} · готово: {ready}"
+
+
+def _runtime_ready(config: dict[str, Any]) -> bool:
+    binary = str(config.get("llama_server_binary") or "").strip()
+    if not binary:
+        return False
+    return bool(Path(binary).expanduser().exists() or shutil.which(binary))
 
 
 def build_state() -> dict[str, Any]:
     config = load_config()
     manager = LlamaServerManager(config)
     language = _language(config)
-    server = manager.server_status()
     proxy = manager.proxy_status()
+    instances = manager.instances_status()
+    legacy_server = manager.server_status()
+    primary_id = primary_instance_id(config)
+    primary = next((item for item in instances if item.get("id") == primary_id), None)
     return {
         "config": _public_config(config),
         "i18n": I18N[language],
         "i18n_all": I18N,
-        "server": server,
+        # Legacy single-server process. Kept only so the UI can offer migration.
+        "server": legacy_server,
+        "legacy_server": {
+            "running": bool(legacy_server.get("running")),
+            "port": legacy_server.get("port"),
+            "pid": legacy_server.get("pid"),
+            "openai_url": legacy_server.get("openai_url"),
+        },
         "proxy": proxy,
-        "instances": manager.instances_status(),
+        "instances": instances,
+        "primary": primary,
+        "runtime_ready": _runtime_ready(config),
         "friendly": {
-            "server": _friendly_status("Server", server, language),
+            "server": (
+                _friendly_status(str(primary.get("name") or primary.get("id") or "Service"), primary, language)
+                if primary
+                else I18N[language]["no_service_yet"]
+            ),
+            "services": _services_summary(instances, language),
             "proxy": _friendly_status("Proxy", proxy, language),
         },
         "validation": validate_config(config),
         "urls": {
-            "openai": server.get("openai_url"),
+            "openai": primary.get("openai_url") if primary else "",
             "ollama": proxy.get("url"),
         },
         "download": download_job_status(),
@@ -1219,6 +1307,12 @@ def _merge_config_patch(config: dict[str, Any], patch: ConfigPatch) -> dict[str,
         if patch.active_profile not in (config.get("profiles") or {}):
             raise HTTPException(status_code=400, detail="Unknown profile")
         config["active_profile"] = patch.active_profile
+
+    if patch.primary_instance is not None:
+        known = {_instance_id(item) for item in config.get("instances") or []}
+        if patch.primary_instance and patch.primary_instance not in known:
+            raise HTTPException(status_code=400, detail="Unknown service id")
+        config["primary_instance"] = patch.primary_instance
 
     if patch.runtime:
         for key, value in patch.runtime.items():
@@ -1295,17 +1389,54 @@ def create_app() -> FastAPI:
     def api_path_validate(payload: PathValidatePayload) -> dict[str, Any]:
         return validate_path_choice(payload.path, payload.kind)
 
-    @app.post("/api/server/start")
+    # Legacy single-server endpoints.
+    # The UI launches everything through /api/instances/*; these remain for
+    # existing scripts and to stop or migrate a server started by an older version.
+    @app.post("/api/server/start", deprecated=True)
     def api_server_start() -> dict[str, Any]:
-        return _result_payload(_manager().start_server(), "Open Logs if startup fails.")
+        return _result_payload(_manager().start_server(), "Prefer services: POST /api/instances/{id}/start.")
 
     @app.post("/api/server/stop")
     def api_server_stop() -> dict[str, Any]:
         return _result_payload(_manager().stop_server())
 
-    @app.post("/api/server/restart")
+    @app.post("/api/server/restart", deprecated=True)
     def api_server_restart() -> dict[str, Any]:
         return _result_payload(_manager().restart_server(), "Wait for status to become ready.")
+
+    @app.post("/api/server/import")
+    def api_server_import() -> dict[str, Any]:
+        """Turn a legacy single server into a regular service and stop the old process."""
+        config = load_config()
+        manager = LlamaServerManager(config)
+        status = manager.server_status()
+        profile_name = str(config.get("active_profile") or "chat")
+        instance = _service_defaults(config, profile_name)
+        profile = deepcopy(active_profile(config))
+        for key in INSTANCE_EDIT_KEYS:
+            if key in profile:
+                instance[key] = profile[key]
+        instance["profile"] = profile_name
+        instance["host"] = str(profile.get("host") or "127.0.0.1")
+        instance["port"] = _coerce_port(status.get("port") or profile.get("port"), 8081)
+        instance["id"] = _unique_instance_id(config, f"{profile_name}-{instance['port']}")
+        instance["name"] = f"{profile_display_name(profile_name)} {instance['port']}"
+        instance["enabled"] = True
+        instance = _clean_instance(instance)
+
+        if status.get("running"):
+            manager.stop_server()
+
+        warnings = validate_instance(config, instance)
+        config.setdefault("instances", []).append(instance)
+        config["primary_instance"] = instance["id"]
+        save_config(config)
+        return {
+            "ok": True,
+            "message": "Single server was imported as a service.",
+            "details": {"instance": instance, "validation": warnings},
+            "next_action": "Start the new service from its card.",
+        }
 
     @app.get("/api/instances")
     def api_instances() -> dict[str, Any]:
@@ -1329,6 +1460,50 @@ def create_app() -> FastAPI:
         config["instances"] = [by_id[item_id] for item_id in requested]
         save_config(config)
         return {"ok": True, "message": "Service order saved.", "details": build_state()}
+
+    @app.post("/api/instances/start-enabled")
+    def api_instances_start_enabled() -> dict[str, Any]:
+        config = load_config()
+        manager = LlamaServerManager(config)
+        results: list[dict[str, Any]] = []
+        for instance in config.get("instances") or []:
+            if not bool(instance.get("enabled", True)):
+                continue
+            result = manager.start_instance(instance)
+            results.append({"id": _instance_id(instance), "ok": result.ok, "message": result.message})
+        failed = [item for item in results if not item["ok"]]
+        return {
+            "ok": not failed,
+            "message": (
+                f"Started {len(results) - len(failed)} of {len(results)} enabled service(s)."
+                if results
+                else "No enabled services to start."
+            ),
+            "details": {"results": results},
+            "next_action": "Open Diagnostics for services that failed." if failed else "",
+        }
+
+    @app.post("/api/instances/stop-all")
+    def api_instances_stop_all() -> dict[str, Any]:
+        manager = _manager()
+        results = [
+            {"ok": result.ok, "message": result.message} for result in manager.stop_all_instances()
+        ]
+        failed = [item for item in results if not item["ok"]]
+        return {
+            "ok": not failed,
+            "message": f"Stop requested for {len(results)} service(s).",
+            "details": {"results": results},
+        }
+
+    @app.post("/api/instances/{instance_id}/primary")
+    def api_instance_primary(instance_id: str) -> dict[str, Any]:
+        config = load_config()
+        if _instance_index(config, instance_id) is None:
+            raise HTTPException(status_code=404, detail="Service not found")
+        config["primary_instance"] = instance_id
+        save_config(config)
+        return {"ok": True, "message": "Main service updated.", "details": build_state()}
 
     @app.get("/api/instances/defaults")
     def api_instance_defaults(profile: str = "chat") -> dict[str, Any]:
@@ -1372,7 +1547,10 @@ def create_app() -> FastAPI:
                 "details": {"validation": warnings, "instance": instance},
                 "next_action": "Fix validation warnings and try again.",
             }
+        first_service = not (config.get("instances") or [])
         config.setdefault("instances", []).append(instance)
+        if first_service:
+            config["primary_instance"] = instance["id"]
         save_config(config)
         details = _service_details(config, instance)
         if payload.start:
@@ -1421,6 +1599,8 @@ def create_app() -> FastAPI:
                 "next_action": "Fix validation warnings and try again.",
             }
         config["instances"][index] = instance
+        if str(config.get("primary_instance") or "") == instance_id:
+            config["primary_instance"] = instance["id"]
         save_config(config)
         details = _service_details(config, instance)
         restart_required = _instance_changed_requires_restart(old, instance) and bool(details["status"].get("running"))
@@ -1450,6 +1630,8 @@ def create_app() -> FastAPI:
         if status.get("running") and stop:
             manager.stop_instance(instance_id)
         removed = config["instances"].pop(index)
+        if str(config.get("primary_instance") or "") == instance_id:
+            config["primary_instance"] = primary_instance_id(config)
         save_config(config)
         return {"ok": True, "message": "Service deleted.", "details": {"instance": removed}}
 
@@ -1504,8 +1686,12 @@ def create_app() -> FastAPI:
         return _result_payload(_manager().stop_proxy())
 
     @app.get("/api/logs")
-    async def api_logs(kind: str = "latest", lines: int = Query(200, ge=1, le=2000)) -> dict[str, Any]:
-        log_path = await run_in_threadpool(_select_log_path, kind)
+    async def api_logs(
+        kind: str = "latest",
+        service: str = "",
+        lines: int = Query(200, ge=1, le=2000),
+    ) -> dict[str, Any]:
+        log_path = await run_in_threadpool(_select_log_path, kind, service)
         text = await run_in_threadpool(tail_file, log_path, lines)
         return {"ok": True, "path": str(log_path) if log_path else "", "text": text}
 
@@ -1602,8 +1788,16 @@ def _find_instance(config: dict[str, Any], instance_id: str) -> dict[str, Any] |
     return None
 
 
-def _select_log_path(kind: str) -> Path | None:
+def _select_log_path(kind: str, service_id: str = "") -> Path | None:
     manager = _manager()
+    if kind == "service":
+        config = manager.config
+        target = service_id or primary_instance_id(config)
+        instance = _find_instance(config, target) if target else None
+        if not instance:
+            return None
+        value = manager.instance_status(instance).get("log_path")
+        return Path(value) if value else None
     if kind == "server":
         value = manager.server_status().get("log_path")
         return Path(value) if value else None

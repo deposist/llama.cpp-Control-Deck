@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Windows Git Bash launchers now skip non-functional Python aliases, select the
+  first runnable Python 3.10+ from `python3`, `python`, or `py`, and support the
+  Windows virtual-environment path `.venv/Scripts/python.exe`.
+
+## [1.1.0] - 2026-07-25
+
+### Added
+- `primary_instance` config key marking one service as the primary one, shared by
+  the web panel, the Tkinter GUI, and the CLI.
+- **Primary** column and **Make primary** button in the Tkinter service list.
+- **Start primary**, **Restart primary**, **Open primary**, and
+  **Copy OpenAI URL** actions in the Tkinter bottom bar, so the common
+  single-model case takes one click without selecting a row first.
+- `start_web.sh` now supports `--setup`, `--help`, dependency checks, and a
+  `LLAMA_CPP_PYTHON` override, matching `start_gui.sh`.
+
+### Changed
+- Unified launch model: every server is a service. The Tkinter **Services** tab
+  is now the first tab and the only place that starts and stops servers.
+- Renamed the Tkinter **Server** tab to **Runtime and defaults**; it now only
+  holds binary paths and defaults for new services, with a banner saying so.
+- Reworked the household help text and README quick-start flows to describe the
+  single service-based launch path instead of the removed single-server mode.
+- **Stop all** now also stops a stray server left over from the old
+  single-server mode, and the close dialog labels it as legacy.
+- Logs tab falls back to the primary service when no row is selected.
+- Rebalanced service table column widths so names and URLs are not clipped.
+- `config.example.json` now matches the shipped defaults, including
+  `primary_instance`, `ui_language`, `llama_cpp_release_backend`, and the
+  `rerank-8083` service.
+
+### Fixed
+- Fixed a corrupted character in the household help heading.
+- Long help banners now wrap instead of being cut off at the window edge.
+
 ## [1.0.3] - 2026-05-30
 
 ### Added

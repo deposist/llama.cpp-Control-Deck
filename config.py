@@ -530,7 +530,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "llama_server_cwd": str(DEFAULT_CWD),
     "llama_server_library_path": str(DEFAULT_LIB_DIR),
     "llama_cpp_release_backend": "auto",
+    # "active_profile" selects which profile template new services start from.
+    # It never starts a server on its own: every launch goes through "instances".
     "active_profile": "chat",
+    # Id of the service shown on the dashboard as the main endpoint.
+    "primary_instance": "chat-8081",
     "profiles": {
         "chat": _profile(profile_type="chat", port=8081),
         "embeddings": _profile(
@@ -652,6 +656,41 @@ def active_profile(config: dict[str, Any]) -> dict[str, Any]:
     return get_profile(config, name)
 
 
+def instance_id_of(instance: dict[str, Any]) -> str:
+    """Stable id for one service entry."""
+    raw = str(instance.get("id") or instance.get("name") or "").strip()
+    if raw:
+        return raw
+    return f"{instance.get('profile') or 'chat'}-{instance.get('port') or '8081'}"
+
+
+def primary_instance_id(config: dict[str, Any]) -> str:
+    """Id of the service the UI treats as the main endpoint.
+
+    Priority: explicit ``primary_instance`` -> first enabled service -> first service.
+    """
+    instances = config.get("instances") or []
+    if not instances:
+        return ""
+    ids = [instance_id_of(item) for item in instances]
+    configured = str(config.get("primary_instance") or "").strip()
+    if configured in ids:
+        return configured
+    for instance, item_id in zip(instances, ids):
+        if bool(instance.get("enabled", True)):
+            return item_id
+    return ids[0]
+
+
+def primary_instance(config: dict[str, Any]) -> dict[str, Any] | None:
+    """Service entry the UI treats as the main endpoint."""
+    target = primary_instance_id(config)
+    for instance in config.get("instances") or []:
+        if instance_id_of(instance) == target:
+            return instance
+    return None
+
+
 def get_profile(config: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     profile_name = name or str(config.get("active_profile") or "chat")
     profiles = config.setdefault("profiles", {})
@@ -735,7 +774,7 @@ def main(argv: list[str] | None = None) -> int:
         print()
 
     if show_profiles:
-        print(f"active_profile: {config.get('active_profile')}")
+        print(f"active_profile (template for new services): {config.get('active_profile')}")
         profiles = config.get("profiles") or {}
         for name in PROFILE_ORDER:
             profile = profiles.get(name) or {}
@@ -744,6 +783,19 @@ def main(argv: list[str] | None = None) -> int:
                 f"alias={profile_model_name(profile)} | "
                 f"port={profile.get('port', '')} | "
                 f"model={profile.get('model_path', '')}"
+            )
+        print()
+        print(f"primary_instance: {primary_instance_id(config) or 'none'}")
+        instances = config.get("instances") or []
+        if not instances:
+            print("services: none configured")
+        for instance in instances:
+            print(
+                f"service {instance_id_of(instance)}: "
+                f"profile={instance.get('profile', '')} | "
+                f"enabled={bool(instance.get('enabled', True))} | "
+                f"port={instance.get('port', '')} | "
+                f"model={instance.get('model_path', '')}"
             )
 
     return 0

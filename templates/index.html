@@ -13,7 +13,7 @@
         <p id="friendly-status">Loading...</p>
       </div>
       <div class="top-actions">
-        <label>
+        <label class="lang-field">
           <span data-i18n="language">Language</span>
           <select id="language">
             <option value="ru">RU</option>
@@ -27,47 +27,62 @@
     <div id="connection-banner" class="connection-banner hidden" role="status" aria-live="polite"></div>
 
     <main class="layout">
-      <section class="panel primary">
+      <section id="legacy-banner" class="panel wide notice hidden">
         <div class="panel-title">
-          <h2 data-i18n="beginner">Quick start</h2>
-          <span id="server-chip" class="chip">...</span>
+          <div>
+            <h2 data-i18n="legacy_server_title">Single server is running (legacy mode)</h2>
+            <p class="muted" data-i18n="legacy_server_hint">
+              This process runs outside the service list.
+            </p>
+          </div>
+          <span id="legacy-chip" class="chip bad">legacy</span>
+        </div>
+        <p id="legacy-details" class="muted"></p>
+        <div class="actions">
+          <button class="primary-action" data-action="legacy-import" data-i18n="import_as_service">Import as service</button>
+          <button data-action="legacy-stop" data-i18n="stop_legacy_server">Stop single server</button>
+        </div>
+      </section>
+
+      <section class="panel wide primary">
+        <div class="panel-title">
+          <div>
+            <h2 data-i18n="dashboard">Main service</h2>
+            <p class="muted" data-i18n="dashboard_hint">
+              Everything starts as a service.
+            </p>
+          </div>
+          <span id="primary-chip" class="chip">...</span>
         </div>
 
         <div id="warnings" class="warnings"></div>
+        <div id="primary-card"></div>
+      </section>
 
-        <div class="field-grid">
-          <label>
-            <span data-i18n="profile">Profile</span>
-            <select id="active-profile"></select>
-          </label>
-          <label>
-            <span data-i18n="model">GGUF model</span>
-            <span class="path-field">
-              <input id="model-path" type="text" placeholder="/path/to/model.gguf" />
-              <button type="button" data-browse-target="model-path" data-browse-kind="model">Browse</button>
+      <section class="panel wide">
+        <div class="panel-title">
+          <div>
+            <h2 data-i18n="services">Services</h2>
+            <p id="services-summary" class="muted"></p>
+          </div>
+          <div class="actions compact">
+            <button class="primary-action" data-action="service-add" data-i18n="add_service">Add service</button>
+            <span class="btn-group">
+              <button data-action="services-start-selected" data-i18n="start_selected">Start selected</button>
+              <button data-action="services-stop-selected" data-i18n="stop_selected">Stop selected</button>
             </span>
-          </label>
-          <label>
-            <span data-i18n="port">Port</span>
-            <input id="port" type="number" min="1" max="65535" />
-          </label>
+            <span class="btn-group">
+              <button data-action="services-start-enabled" data-i18n="start_enabled">Start enabled</button>
+              <button data-action="services-stop-all" data-i18n="stop_all">Stop all</button>
+            </span>
+            <button id="undo-delete" class="hidden" data-action="services-undo-delete" data-i18n="undo_delete">Undo delete</button>
+          </div>
         </div>
-
-        <div class="actions">
-          <button data-action="autodetect" data-i18n="auto_detect">Auto-detect runtime</button>
-          <button data-action="save" data-i18n="save">Save</button>
-          <button class="primary-action" data-action="server-start" data-i18n="start">Start</button>
-          <button data-action="server-stop" data-i18n="stop">Stop</button>
-          <button data-action="server-restart" data-i18n="restart">Restart</button>
-        </div>
-
-        <div class="url-row">
-          <label>
-            <span data-i18n="openai_url">OpenAI URL</span>
-            <input id="openai-url" type="text" readonly />
-          </label>
-          <button data-copy="openai-url" data-i18n="copy">Copy</button>
-        </div>
+        <p class="muted hint" data-i18n="services_hint">
+          Each row is its own llama-server with its own port, model, and settings.
+        </p>
+        <div id="service-warnings" class="warnings"></div>
+        <div id="services" class="service-grid"></div>
       </section>
 
       <section class="panel">
@@ -86,7 +101,8 @@
           </label>
         </div>
         <div class="actions">
-          <button data-action="proxy-start" data-i18n="start">Start</button>
+          <button data-action="save" data-i18n="save">Save</button>
+          <button class="primary-action" data-action="proxy-start" data-i18n="start">Start</button>
           <button data-action="proxy-stop" data-i18n="stop">Stop</button>
         </div>
         <div class="url-row">
@@ -98,36 +114,41 @@
         </div>
       </section>
 
-      <section class="panel wide">
+      <section class="panel">
         <div class="panel-title">
-          <h2 data-i18n="runtime_updates">Runtime & updates</h2>
+          <div>
+            <h2 data-i18n="setup">Setup and runtime</h2>
+            <p class="muted" data-i18n="setup_hint">Make sure Python and llama-server were found.</p>
+          </div>
+          <span id="runtime-chip" class="chip">...</span>
+        </div>
+        <p id="runtime-summary" class="muted"></p>
+        <div class="actions">
+          <button class="primary-action" data-action="autodetect" data-i18n="auto_detect">Auto-detect runtime</button>
+          <span class="btn-group">
+            <button data-action="release-status" data-i18n="check_release">Check release</button>
+            <button data-action="release-download" data-i18n="download">Download llama-server</button>
+          </span>
+        </div>
+        <div class="url-row">
+          <label>
+            <span data-i18n="download_status">Download status</span>
+            <input id="download-message" type="text" readonly />
+          </label>
           <span id="download-chip" class="chip">idle</span>
         </div>
-        <div class="runtime-grid">
-          <div class="runtime-card">
-            <h3 data-i18n="runtime">Runtime</h3>
-            <p id="runtime-summary"></p>
-            <div class="actions">
-              <button data-action="autodetect" data-i18n="auto_detect">Auto-detect runtime</button>
-              <button data-action="release-status" data-i18n="check_release">Check release</button>
-              <button class="primary-action" data-action="release-download" data-i18n="download">Download llama-server</button>
-              <button data-action="download-status" data-i18n="download_status">Download status</button>
-            </div>
-          </div>
-          <div class="runtime-card">
-            <h3 data-i18n="download_status">Download status</h3>
-            <p id="download-message">No download running.</p>
-            <div class="progress-shell" aria-label="Download activity">
-              <div id="download-progress" class="progress-bar"></div>
-            </div>
-            <pre id="download-lines"></pre>
-          </div>
+        <div class="progress-shell" aria-label="Download activity">
+          <div id="download-progress" class="progress-bar"></div>
         </div>
+        <pre id="download-lines" class="compact-pre"></pre>
       </section>
 
       <section class="panel wide">
         <details>
           <summary data-i18n="advanced">Advanced settings</summary>
+          <p class="muted hint" data-i18n="templates_hint">
+            A profile is only a set of default values for a new service.
+          </p>
           <div class="advanced-grid">
             <label>
               <span data-i18n="python">Python</span>
@@ -158,45 +179,22 @@
               </span>
             </label>
             <label>
-              <span data-i18n="context">Context</span>
-              <input id="n-ctx" type="text" />
+              <span data-i18n="template_for_new">Template for new services</span>
+              <select id="active-profile"></select>
             </label>
-            <label>
-              <span data-i18n="gpu_layers">GPU layers</span>
-              <input id="gpu-layers" type="text" />
-            </label>
-            <label>
-              <span data-i18n="threads">Threads</span>
-              <input id="threads" type="text" />
-            </label>
-            <label>
-              <span data-i18n="extra_args">Extra args</span>
-              <input id="extra-args" type="text" />
-            </label>
+          </div>
+          <div class="actions">
+            <button class="primary-action" data-action="save" data-i18n="save">Save</button>
           </div>
         </details>
       </section>
 
       <section class="panel wide">
         <div class="panel-title">
-          <h2 data-i18n="services">Services</h2>
-          <div class="actions compact">
-            <button class="primary-action" data-action="service-add" data-i18n="add_service">Add service</button>
-            <button data-action="services-start-selected" data-i18n="start_selected">Start selected</button>
-            <button data-action="services-stop-selected" data-i18n="stop_selected">Stop selected</button>
-            <button id="undo-delete" class="hidden" data-action="services-undo-delete" data-i18n="undo_delete">Undo delete</button>
-            <button data-action="refresh" data-i18n="refresh">Refresh</button>
-          </div>
-        </div>
-        <div id="services" class="service-grid"></div>
-      </section>
-
-      <section class="panel wide">
-        <div class="panel-title">
           <h2 data-i18n="diagnostics">Diagnostics</h2>
           <div class="actions compact">
+            <button data-action="logs-service" data-i18n="logs_for_service">Main service logs</button>
             <button data-action="logs-latest" data-i18n="latest">Latest</button>
-            <button data-action="logs-server" data-i18n="server">Server</button>
             <button data-action="logs-proxy" data-i18n="proxy">Proxy</button>
             <button data-action="devices" data-i18n="devices">GPU / devices</button>
           </div>
@@ -332,13 +330,13 @@
           <button data-action="first-run-close" type="button" data-i18n="close">Close</button>
         </div>
         <ol class="wizard-steps">
-          <li><strong data-i18n="auto_detect">Detect runtime</strong> — <span data-i18n="detect_runtime_step">find Python, llama-server, working directory, and libraries.</span></li>
-          <li><strong data-i18n="choose_model">Select model</strong> — <span data-i18n="select_model_step">choose a local `.gguf` model file.</span></li>
-          <li><strong data-i18n="create_and_start">Save and start</strong> — <span data-i18n="save_start_step">launch the OpenAI-compatible endpoint.</span></li>
+          <li><strong data-i18n="auto_detect">Detect runtime</strong> — <span data-i18n="step_runtime">find Python, llama-server, working directory, and libraries.</span></li>
+          <li><strong data-i18n="add_service">Add service</strong> — <span data-i18n="step_service">create a service and pick a .gguf model file.</span></li>
+          <li><strong data-i18n="start">Start</strong> — <span data-i18n="step_start">press Start on the service card.</span></li>
         </ol>
         <div class="actions modal-actions">
           <button data-action="autodetect" type="button" data-i18n="auto_detect">Auto-detect runtime</button>
-          <button data-browse-target="model-path" data-browse-kind="model" type="button" data-i18n="choose_model">Choose model</button>
+          <button data-action="first-run-add-service" type="button" data-i18n="add_service">Add service</button>
           <button class="primary-action" data-action="first-run-close" type="button" data-i18n="continue">Continue</button>
         </div>
       </div>

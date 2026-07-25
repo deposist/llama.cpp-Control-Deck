@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Windows Git Bash launchers now skip non-functional Python aliases, select the
-  first runnable Python 3.10+ from `python3`, `python`, or `py`, and support the
-  Windows virtual-environment path `.venv/Scripts/python.exe`.
-
 ## [1.1.0] - 2026-07-25
 
 ### Added
@@ -42,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed a corrupted character in the household help heading.
 - Long help banners now wrap instead of being cut off at the window edge.
+- Windows Git Bash launchers now skip non-functional Python aliases, select the
+  first runnable Python 3.10+ from `python3`, `python`, or `py`, and support the
+  Windows virtual-environment path `.venv/Scripts/python.exe`.
 
 ## [1.0.3] - 2026-05-30
 
